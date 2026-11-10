@@ -1,0 +1,27 @@
+{
+  "model": "gan",
+  "base_config": "train_models/models_configs/gans_config.json",
+  "out_dir": "hpsearch/gan",
+  "overrides": {
+    "dataset.split_file": "data/datos_loopback/ch_sodupe_180_time_L200_split.npz",
+    "dataset.normalization": "per_tap",
+    "training.epochs": 300,
+    "training.patience": 40
+  },
+  "search": "grid",
+  "params": {
+    "training.lr": [
+      5e-05,
+      0.0001,
+      0.0002
+    ],
+    "model.z_dim": [
+      64,
+      128
+    ]
+  },
+  "eval": {
+    "n_samples": 2000,
+    "subset": "val"
+  }
+}

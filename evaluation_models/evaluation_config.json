@@ -4,6 +4,8 @@
   },
   "data": {
     "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy",
+    "split_file": "data/datos_loopback/ch_sodupe_180_time_L200_split.npz",
+    "subset": "all",
     "signal_length": 200
   },
   "sampling": {

@@ -6,9 +6,9 @@ import math
 from torch.utils.data import DataLoader, TensorDataset
 import os
 try:
-    from train_models.normalization import prepare_training_data
+    from train_models.normalization import prepare_training_data, load_subset, diffusion_val_loss
 except ImportError:  # ejecutado desde dentro de train_models/
-    from normalization import prepare_training_data
+    from normalization import prepare_training_data, load_subset, diffusion_val_loss
 
 def load_config(path="dm_config.json"):
     with open(path, "r") as f:
@@ -165,7 +165,10 @@ def train(config_path):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.makedirs(config["paths"]["save_dir"], exist_ok=True)
     # cargar dataset
-    data_np, _, _ = prepare_training_data(config, config["paths"]["save_dir"])
+    data_np, _, scaler = prepare_training_data(config, config["paths"]["save_dir"])
+    # Validación (si hay dataset.split_file): el early stopping se decide con la pérdida en validación
+    val_np = load_subset(config, "val")
+    val_data = torch.from_numpy(scaler.transform(val_np)).float() if val_np is not None else None
     data = torch.from_numpy(data_np).float()
 
     loader = DataLoader(
@@ -221,10 +224,15 @@ def train(config_path):
             loss_avg += loss.item()
 
         loss_avg /= len(loader)
-        print(f"Epoch {epoch} | Loss {loss_avg:.6f}")
+        if val_data is not None:
+            crit = diffusion_val_loss(ddpm.loss, val_data, config["training"]["batch_size"], device)
+            print(f"Epoch {epoch} | Loss {loss_avg:.6f} | Val {crit:.6f}")
+        else:
+            crit = loss_avg
+            print(f"Epoch {epoch} | Loss {loss_avg:.6f}")
 
-        if loss_avg < best_loss - config["training"]["min_delta"]:
-            best_loss = loss_avg
+        if crit < best_loss - config["training"]["min_delta"]:
+            best_loss = crit
             epochs_no_improve = 0
 
             torch.save(model.state_dict(),

@@ -12,10 +12,9 @@
     "time_emb_dim": 64
   },
   "diffusion": {
-    "schedule": "cosine",
-    "use_tap_weights": true,
     "T": 1000,
-    "lambda_rms": 1.0
+    "use_tap_weights": true,
+    "lambda_psd": 0.05
   },
   "training": {
     "epochs": 500,

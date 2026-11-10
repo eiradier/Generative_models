@@ -68,21 +68,60 @@ class TapScaler:
         return cls(d["mean"], d["std"], float(d["scale"]))
 
 
+def load_subset(config, name):
+    """
+    Devuelve el subconjunto `name` ("train", "val" o "test") del dataset, en su escala original.
+    Si la configuración no tiene dataset.split_file, "train" es el dataset completo y los demás None.
+    """
+    data = np.load(config["dataset"]["path"]).astype(np.float32)
+    split_file = config["dataset"].get("split_file")
+    if not split_file:
+        return data if name == "train" else None
+    return data[np.load(split_file)[name]]
+
+
 def prepare_training_data(config, save_dir):
     """
-    Carga el dataset de la configuración y, si dataset.normalization == "per_tap", lo normaliza
-    por tap y guarda el scaler en save_dir. Devuelve (datos_entrenamiento, datos_originales, scaler).
+    Carga los datos de entrenamiento y, si dataset.normalization == "per_tap", los normaliza por tap
+    (scaler ajustado solo con train) y guarda el scaler en save_dir.
+
+    Devuelve (datos_entrenamiento, referencia, scaler):
+      - datos_entrenamiento: train normalizado (lo que ve el modelo).
+      - referencia: datos en escala original con los que medir la calidad de lo generado durante el
+        entrenamiento (early stopping): validación si hay dataset.split_file; si no, el propio train.
     """
-    original = np.load(config["dataset"]["path"]).astype(np.float32)
+    train = load_subset(config, "train")
+    val = load_subset(config, "val")
+    reference = val if val is not None else train
+    if val is not None:
+        print(f"Separación train/val: {len(train)} canales de entrenamiento, {len(val)} de validación")
+
     mode = config["dataset"].get("normalization", "none")
     if mode == "per_tap":
-        scaler = TapScaler.fit(original)
+        scaler = TapScaler.fit(train)
         scaler.save(save_dir)
-        data = scaler.transform(original)
+        data = scaler.transform(train)
         clipped = np.mean(np.abs(data) >= 1.0) * 100
         print(f"Normalización por tap (escala {scaler.scale:.2f}, {clipped:.4f}% de valores recortados); "
               f"scaler guardado en {save_dir}")
-        return data, original, scaler
+        return data, reference, scaler
     if mode != "none":
         raise ValueError(f"normalization desconocida: {mode}")
-    return original, original, TapScaler.identity(original.shape[-1])
+    return train, reference, TapScaler.identity(train.shape[-1])
+
+
+@torch.no_grad()
+def diffusion_val_loss(loss_fn, val_data, batch_size, device, seed=0):
+    """
+    Pérdida media de difusión sobre validación con timesteps y ruido fijos (misma semilla en cada
+    época), para que las épocas sean comparables. No altera el estado aleatorio del entrenamiento.
+    """
+    devices = [torch.cuda.current_device()] if str(device).startswith("cuda") else []
+    with torch.random.fork_rng(devices=devices):
+        torch.manual_seed(seed)
+        total, n = 0.0, 0
+        for i in range(0, len(val_data), batch_size):
+            x = val_data[i:i + batch_size].to(device)
+            total += loss_fn(x).item() * len(x)
+            n += len(x)
+    return total / n

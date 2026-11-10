@@ -264,6 +264,36 @@ def compare(real, fake, df, thresholds):
     return m
 
 
+def quick_metrics(h_ref, h_fake, dt, thresholds=(0.9, 0.5), ber_snr=(5, 15, 25), seed=0):
+    """
+    Resumen de la calidad de unos canales generados frente a una referencia (p. ej. validación),
+    para comparar configuraciones. Devuelve un dict con métricas escalares y `selection_score`:
+
+        selection_score = PDP_MAE_dB + 10 * (KS_rms_delay + KS_|h|)
+
+    (menor es mejor). Combina el ajuste del PDP medio con el de dos distribuciones por canal
+    (RMS delay spread y magnitud), que detectan colapso de modos y suelos de ruido.
+    """
+    L = h_ref.shape[1]
+    allmag = np.concatenate([np.abs(h_ref).ravel(), np.abs(h_fake).ravel()])
+    mag_grid = np.linspace(0, allmag.max(), 300)
+    mag_db_grid = np.linspace(-80, 20 * np.log10(allmag.max() + 1e-12), 300)
+    r = channel_stats(h_ref, dt, mag_grid, mag_db_grid, kde_points=20000, seed=seed)
+    f = channel_stats(h_fake, dt, mag_grid, mag_db_grid, kde_points=20000, seed=seed)
+    m = compare(r, f, 1 / dt / L, thresholds)
+    n = min(len(h_ref), len(h_fake))
+    b_ref = ber_curve(h_ref[:n], list(ber_snr), "QPSK", seed=seed)
+    b_fake = ber_curve(h_fake[:n], list(ber_snr), "QPSK", seed=seed)
+    m["ber_qpsk_dlog10"] = float(np.mean(np.abs(np.log10(np.maximum(b_fake, 1e-12))
+                                                - np.log10(np.maximum(b_ref, 1e-12)))))
+    m["selection_score"] = m["pdp_mae_db"] + 10 * (m["rms_delay_ks"] + m["mag_ks"])
+    return m
+
+
+SUMMARY_KEYS = ["selection_score", "pdp_mae_db", "rms_delay_ks", "mag_ks", "mean_delay_ks",
+                "rms_delay_fake_ns", "freq_corr_mae", "bc50_err_mhz", "ber_qpsk_dlog10"]
+
+
 # Figuras
 
 def _style(ax, xlabel, ylabel, legend=True, loc="best"):
@@ -477,6 +507,8 @@ def main():
     parser.add_argument("--reuse-generated", action="store_true",
                         help="Usa los canales ya generados en save_dir/generated si existen")
     parser.add_argument("--no-ber", action="store_true", help="No calcula las curvas de BER")
+    parser.add_argument("--subset", choices=["train", "val", "test", "all"], default=None,
+                        help="Conjunto real de referencia si hay data.split_file (por defecto data.subset)")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -498,6 +530,13 @@ def main():
 
     # Datos reales
     real_data = np.load(repo_path(config["data"]["path"])).astype(np.float32)
+    subset = args.subset or config["data"].get("subset", "all")
+    if subset != "all":
+        split_file = config["data"].get("split_file")
+        if not split_file:
+            raise ValueError("data.subset requiere data.split_file en la configuración")
+        real_data = real_data[np.load(repo_path(split_file))[subset]]
+    print(f"Referencia real: subconjunto '{subset}' ({len(real_data)} canales)")
     N_real, _, L = real_data.shape
     assert L == config["data"]["signal_length"], "signal_length no coincide con el dataset"
     h_real = to_complex(real_data)
@@ -563,7 +602,7 @@ def main():
                     np.log10(np.maximum(res[mt], 1e-12)) - np.log10(np.maximum(res["real"], 1e-12)))))
 
     # Salidas
-    cfg_info = [f"Datos reales: {config['data']['path']} ({N_real} canales, L={L})",
+    cfg_info = [f"Datos reales: {config['data']['path']}, subconjunto '{subset}' ({N_real} canales, L={L})",
                 f"Muestras generadas por modelo: {num_samples}",
                 f"Periodo de muestreo: {dt * 1e9:.3f} ns"]
     write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds)

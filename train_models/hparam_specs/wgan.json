@@ -1,0 +1,34 @@
+{
+  "model": "wgan",
+  "base_config": "train_models/models_configs/gans_config.json",
+  "out_dir": "hpsearch/wgan",
+  "overrides": {
+    "dataset.split_file": "data/datos_loopback/ch_sodupe_180_time_L200_split.npz",
+    "dataset.normalization": "per_tap",
+    "training.epochs": 100,
+    "training.patience": 25
+  },
+  "search": "random",
+  "n_trials": 8,
+  "seed": 0,
+  "params": {
+    "training.wgan.lr": [
+      5e-05,
+      0.0001,
+      0.0002
+    ],
+    "training.wgan.n_critic": [
+      3,
+      5
+    ],
+    "training.wgan.lambda_spec": [
+      0.0,
+      0.1,
+      0.5
+    ]
+  },
+  "eval": {
+    "n_samples": 2000,
+    "subset": "val"
+  }
+}

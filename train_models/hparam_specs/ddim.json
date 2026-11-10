@@ -1,0 +1,36 @@
+{
+  "model": "ddim",
+  "base_config": "train_models/models_configs/dm_config.json",
+  "out_dir": "hpsearch/ddim",
+  "overrides": {
+    "dataset.split_file": "data/datos_loopback/ch_sodupe_180_time_L200_split.npz",
+    "dataset.normalization": "per_tap",
+    "training.epochs": 150,
+    "training.patience": 20
+  },
+  "search": "random",
+  "n_trials": 8,
+  "seed": 0,
+  "params": {
+    "training.lr": [
+      0.0001,
+      0.0002,
+      0.0005
+    ],
+    "diffusion.lambda_psd": [
+      0.0,
+      0.05,
+      0.2
+    ],
+    "diffusion.use_tap_weights": [
+      true,
+      false
+    ]
+  },
+  "eval": {
+    "n_samples": 1000,
+    "subset": "val",
+    "sampling_steps": 100,
+    "eta": 0.0
+  }
+}

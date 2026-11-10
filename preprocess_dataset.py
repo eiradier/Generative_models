@@ -245,6 +245,35 @@ def verify_preprocessing(H_full, dataset, L, save_dir="data/datos_loopback", kee
     print(f"Figura de verificación guardada en: {out}")
 
 
+def make_block_split(n, block=500, fractions=(0.8, 0.1, 0.1), gap=100, seed=42):
+    """
+    Separa n canales consecutivos en el tiempo en entrenamiento / validación / test.
+
+    Canales vecinos están muy correlados (correlación ~0.99 entre canales consecutivos; hace falta
+    una separación de ~200 canales para llegar al nivel de fondo), así que un reparto aleatorio
+    canal a canal pondría casi la misma medida en entrenamiento y en test. Se reparten bloques de
+    `block` canales consecutivos al azar en las proporciones `fractions`, y se descartan `gap`
+    canales a cada lado de las fronteras entre bloques de conjuntos distintos.
+
+    Devuelve un dict {"train", "val", "test"} con los índices de cada conjunto.
+    """
+    rng = np.random.default_rng(seed)
+    n_blocks = int(np.ceil(n / block))
+    counts = np.round(np.array(fractions) * n_blocks).astype(int)
+    counts[0] = n_blocks - counts[1:].sum()
+    labels = rng.permutation(np.repeat(np.arange(3), counts))  # 0 train, 1 val, 2 test
+
+    lab = np.repeat(labels, block)[:n]
+    keep = np.ones(n, dtype=bool)
+    for b in range(1, n_blocks):
+        if labels[b] != labels[b - 1]:
+            edge = b * block
+            keep[max(0, edge - gap // 2):min(n, edge + gap // 2)] = False
+
+    names = ["train", "val", "test"]
+    return {names[k]: np.where((lab == k) & keep)[0] for k in range(3)}
+
+
 def analyze_dataset(data, save_dir="data/datos_loopback", num_examples=5, heatmap_channels=100, filtrar_zeros=False, eps=1e-6):
     if save_dir is not None:
         os.makedirs(save_dir, exist_ok=True)
@@ -407,6 +436,10 @@ if __name__ == "__main__":
     parser.add_argument("--min-energy-db", type=float, default=-8.0,
                         help="Descarta canales con energía < mediana + este valor (dB). "
                              "Usa un valor muy negativo (p. ej. -100) para no descartar ninguno")
+    parser.add_argument("--split-block", type=int, default=500,
+                        help="Tamaño de los bloques de canales consecutivos para separar train/val/test")
+    parser.add_argument("--split-gap", type=int, default=100,
+                        help="Canales descartados en cada frontera entre conjuntos distintos")
     parser.add_argument("--no-plots", action="store_true", help="No generar las figuras de análisis")
     args = parser.parse_args()
 
@@ -418,6 +451,12 @@ if __name__ == "__main__":
         min_energy_db=args.min_energy_db,
         verify_dir=None if args.no_plots else os.path.dirname(args.output),
     )
+
+    split = make_block_split(len(data_loopback), block=args.split_block, gap=args.split_gap)
+    split_path = os.path.splitext(args.output)[0] + "_split.npz"
+    np.savez(split_path, **split)
+    print(f"\nSeparación en bloques de {args.split_block} canales (huecos de {args.split_gap}): "
+          + ", ".join(f"{k}={len(v)}" for k, v in split.items()) + f" -> {split_path}")
 
     if not args.no_plots:
         analyze_dataset(data_loopback, save_dir=os.path.dirname(args.output), filtrar_zeros=False)

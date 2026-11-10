@@ -6,9 +6,9 @@ import math
 from torch.utils.data import DataLoader, TensorDataset
 import os
 try:
-    from train_models.normalization import prepare_training_data
+    from train_models.normalization import prepare_training_data, load_subset, diffusion_val_loss
 except ImportError:  # ejecutado desde dentro de train_models/
-    from normalization import prepare_training_data
+    from normalization import prepare_training_data, load_subset, diffusion_val_loss
 import json
 
 def load_config(path="dm_config.json"):
@@ -114,7 +114,7 @@ def cosine_beta_schedule(T):
 
 class Diffusion(nn.Module):
     def __init__(self, model, T=1000, data=None,
-                 lambda_psd = 0.05):
+                 lambda_psd = 0.05, use_tap_weights=True):
         super().__init__()
         self.model = model
 
@@ -135,15 +135,17 @@ class Diffusion(nn.Module):
         self.register_buffer('sqrt_alpha_bar', torch.sqrt(alpha_bar))
         self.register_buffer('sqrt_one_minus', torch.sqrt(1 - alpha_bar))
 
-        if data is None:
-            raise ValueError("data must be provided to compute tap_weights")
-
-        mag = np.abs(data[:, 0, :] + 1j * data[:, 1, :])
-        pdp = np.mean(mag ** 2, axis=0)  # (L,)
-        pdp_norm = pdp / (pdp.max() + 1e-12)
-
-        tap_weights = 1.0 + 2.0 * pdp_norm
-        tap_weights = torch.tensor(tap_weights, dtype=torch.float32)
+        if use_tap_weights:
+            # Pesa más los taps con más potencia media. Con normalización por tap el PDP de los datos
+            # es casi plano y estos pesos quedan prácticamente uniformes.
+            if data is None:
+                raise ValueError("data must be provided to compute tap_weights")
+            mag = np.abs(data[:, 0, :] + 1j * data[:, 1, :])
+            pdp = np.mean(mag ** 2, axis=0)  # (L,)
+            pdp_norm = pdp / (pdp.max() + 1e-12)
+            tap_weights = torch.tensor(1.0 + 2.0 * pdp_norm, dtype=torch.float32)
+        else:
+            tap_weights = torch.ones(data.shape[-1] if data is not None else 1)
 
         self.register_buffer('tap_weights', tap_weights)
 
@@ -258,7 +260,10 @@ def train(config_path):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.makedirs(config["paths"]["save_dir"], exist_ok=True)
 
-    data_np, _, _ = prepare_training_data(config, config["paths"]["save_dir"])
+    data_np, _, scaler = prepare_training_data(config, config["paths"]["save_dir"])
+    # Validación (si hay dataset.split_file): el early stopping se decide con la pérdida en validación
+    val_np = load_subset(config, "val")
+    val_data = torch.from_numpy(scaler.transform(val_np)).float() if val_np is not None else None
 
     data = torch.from_numpy(data_np).float()
 
@@ -276,6 +281,7 @@ def train(config_path):
         T=config["diffusion"]["T"],
         data=data_np,
         lambda_psd = config["diffusion"].get("lambda_psd", 0.05),
+        use_tap_weights = config["diffusion"].get("use_tap_weights", True),
     ).to(device)
 
     opt = torch.optim.Adam(
@@ -330,10 +336,15 @@ def train(config_path):
 
         loss_avg /= len(loader)
 
-        print(f"Epoch {epoch} | Loss {loss_avg:.6f}")
+        if val_data is not None:
+            crit = diffusion_val_loss(diffusion.loss, val_data, config["training"]["batch_size"], device)
+            print(f"Epoch {epoch} | Loss {loss_avg:.6f} | Val {crit:.6f}")
+        else:
+            crit = loss_avg
+            print(f"Epoch {epoch} | Loss {loss_avg:.6f}")
 
-        if loss_avg < best_loss - config["training"]["min_delta"]:
-            best_loss = loss_avg
+        if crit < best_loss - config["training"]["min_delta"]:
+            best_loss = crit
             epochs_no_improve = 0
 
             save_path = os.path.join(
@@ -342,7 +353,7 @@ def train(config_path):
             )
 
             torch.save(model.state_dict(), save_path)
-            print(f"Nuevo mejor modelo guardado | epoch {epoch} | loss {loss_avg:.6f} -> {save_path}")
+            print(f"Nuevo mejor modelo guardado | epoch {epoch} | loss {crit:.6f} -> {save_path}")
         else:
             epochs_no_improve += 1
 

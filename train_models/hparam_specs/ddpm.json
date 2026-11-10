@@ -1,0 +1,27 @@
+{
+  "model": "ddpm",
+  "base_config": "train_models/models_configs/dm_config.json",
+  "out_dir": "hpsearch/ddpm",
+  "overrides": {
+    "dataset.split_file": "data/datos_loopback/ch_sodupe_180_time_L200_split.npz",
+    "dataset.normalization": "per_tap",
+    "training.epochs": 150,
+    "training.patience": 20
+  },
+  "search": "grid",
+  "params": {
+    "training.lr": [
+      0.0001,
+      0.0002,
+      0.0005
+    ],
+    "training.batch_size": [
+      64,
+      128
+    ]
+  },
+  "eval": {
+    "n_samples": 1000,
+    "subset": "val"
+  }
+}
