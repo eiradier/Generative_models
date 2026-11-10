@@ -1,101 +1,128 @@
+"""
+Cálculo de curvas de BER sobre canales en el dominio del tiempo (respuesta al impulso).
+
+Modelo de enlace (OFDM con prefijo cíclico >= L, sin ISI):
+    h[n] (L taps)  ->  H[k] = FFT_nfft(h)       (respuesta en frecuencia por subportadora)
+    y[k] = H[k] x[k] + w[k],   w ~ CN(0, N0)
+    x_hat[k] = y[k] / H[k]                       (ecualización ZF, canal perfectamente conocido)
+
+Convenios:
+- Símbolos con energía media Es = 1.
+- Si normalize=True, cada canal se escala a energía unidad (sum |h|^2 = 1), de modo que
+  E{|H[k]|^2} = 1 y la SNR es la SNR media recibida por subportadora: SNR = Es / N0.
+  Así la BER solo depende de la forma del canal (selectividad en frecuencia) y no de su escala,
+  que es lo que se quiere comparar entre canales reales y generados.
+- Con el mismo `seed`, los bits y el ruido son idénticos para cualquier conjunto de canales
+  del mismo tamaño, así que las diferencias de BER entre real y generado se deben solo al canal.
+"""
 import numpy as np
+from scipy.special import erfc
 
-def qpsk_mapper(bits):
-    # Agrupar bits de 2 en 2 (QPSK usa 2 bits por símbolo)
-    bits = bits.reshape(-1, 2)
-    # Convertir bits a valores ±1
-    # 0 → +1, 1 → -1
-    symbols = (1 - 2*bits[:, 0]) + 1j * (1 - 2*bits[:, 1])
-    # Normalizar energía del símbolo
-    return symbols / np.sqrt(2)
+BITS_PER_SYMBOL = {"QPSK": 2, "16QAM": 4}
 
-def qpsk_demapper(symbols):
-    # Si parte real es negativa → bit 1
-    bits_real = (np.real(symbols) < 0).astype(int)
-    # Si parte imaginaria es negativa → bit 1
-    bits_imag = (np.imag(symbols) < 0).astype(int)
-    # Recombinar en vector de bits plano
-    return np.stack([bits_real, bits_imag], axis=1).reshape(-1)
+# Gray 16QAM por eje: 00 -> -3, 01 -> -1, 11 -> +1, 10 -> +3
+_PAM4_LEVELS = np.array([-3.0, -1.0, 3.0, 1.0])  # indexado por 2*b0 + b1
 
-def add_awgn(signal, snr_db):
-    # Convertir SNR de dB a escala lineal
-    snr = 10 ** (snr_db / 10)
-    # Potencia media de la señal
-    power = np.mean(np.abs(signal) ** 2)
-    # Potencia del ruido según SNR
-    noise_power = power / snr
 
-    # Ruido complejo gaussiano (real + imaginario)
-    noise = np.sqrt(noise_power / 2) * (
-        np.random.randn(*signal.shape) +
-        1j * np.random.randn(*signal.shape)
-    )
-    # Señal + ruido
-    return signal + noise
+def modulate(bits, mod_type="QPSK"):
+    """bits (n_sym * bps,) -> símbolos complejos con Es = 1 (mapeo Gray)."""
+    if mod_type == "QPSK":
+        b = bits.reshape(-1, 2)
+        return ((1 - 2 * b[:, 0]) + 1j * (1 - 2 * b[:, 1])) / np.sqrt(2)
+    if mod_type == "16QAM":
+        b = bits.reshape(-1, 4)
+        re = _PAM4_LEVELS[2 * b[:, 0] + b[:, 1]]
+        im = _PAM4_LEVELS[2 * b[:, 2] + b[:, 3]]
+        return (re + 1j * im) / np.sqrt(10)
+    raise ValueError(f"Modulación no soportada: {mod_type}")
 
-def compute_ber(h, bits, mod_type="QPSK"):
+
+def demodulate(symbols, mod_type="QPSK"):
+    """Decisión dura (Gray). Devuelve los bits en el mismo orden que `modulate`."""
+    if mod_type == "QPSK":
+        return np.stack([np.real(symbols) < 0, np.imag(symbols) < 0], axis=1).reshape(-1).astype(np.int8)
+    if mod_type == "16QAM":
+        s = symbols * np.sqrt(10)
+        re, im = np.real(s), np.imag(s)
+        return np.stack([re > 0, np.abs(re) < 2, im > 0, np.abs(im) < 2], axis=1).reshape(-1).astype(np.int8)
+    raise ValueError(f"Modulación no soportada: {mod_type}")
+
+
+def channel_frequency_response(h, nfft=None, normalize=True):
+    """
+    h: (N, L) complejo (respuesta al impulso, taps en el eje 1).
+    Devuelve H: (N, nfft). Con normalize=True cada canal tiene energía unidad,
+    por lo que mean_k |H[k]|^2 = 1 para cada canal.
+    """
+    h = np.asarray(h, dtype=np.complex128)
+    if h.ndim != 2:
+        raise ValueError("h debe tener forma (N, L)")
     N, L = h.shape
-    num_symbols = N * L
+    nfft = L if nfft is None else int(nfft)
+    if nfft < L:
+        raise ValueError(f"nfft ({nfft}) debe ser >= número de taps ({L})")
+    if normalize:
+        h = h / (np.sqrt(np.sum(np.abs(h) ** 2, axis=1, keepdims=True)) + 1e-30)
+    return np.fft.fft(h, n=nfft, axis=1)  # FFT a lo largo de los TAPS
 
+
+def ber_curve(h, snr_db, mod_type="QPSK", nfft=None, normalize=True, n_ofdm=1, seed=0):
+    """
+    BER con ecualización ZF para una lista de SNR (dB).
+
+    h        : (N, L) canales complejos en el tiempo.
+    snr_db   : iterable de SNR medias por subportadora (Es/N0) en dB.
+    nfft     : nº de subportadoras (>= L). Por defecto L.
+    n_ofdm   : símbolos OFDM transmitidos por cada realización de canal.
+    seed     : semilla de bits y ruido (la misma para real y generado).
+
+    Devuelve un array con la BER para cada SNR.
+    """
+    H = channel_frequency_response(h, nfft=nfft, normalize=normalize)  # (N, K)
+    N, K = H.shape
+    bps = BITS_PER_SYMBOL[mod_type]
+
+    rng = np.random.default_rng(seed)
+    bits = rng.integers(0, 2, size=n_ofdm * N * K * bps, dtype=np.int8)
+    x = modulate(bits, mod_type).reshape(n_ofdm, N, K)
+    w_unit = (rng.standard_normal(x.shape) + 1j * rng.standard_normal(x.shape)) / np.sqrt(2)
+
+    Hx = H[None] * x
+    H_safe = np.where(np.abs(H) > 1e-15, H, 1e-15)[None]
+
+    bers = []
+    for snr in np.atleast_1d(snr_db):
+        n0 = 10 ** (-snr / 10)  # Es = 1
+        y = Hx + np.sqrt(n0) * w_unit
+        x_hat = y / H_safe
+        rx_bits = demodulate(x_hat.reshape(-1), mod_type)
+        bers.append(np.mean(rx_bits != bits))
+    return np.array(bers)
+
+
+def compute_ber(h, snr_db=10.0, mod_type="QPSK", **kwargs):
+    """BER para una única SNR (compatibilidad con la versión anterior)."""
+    return float(ber_curve(h, [snr_db], mod_type=mod_type, **kwargs)[0])
+
+
+# Curvas teóricas (Gray, SNR = Es/N0 en dB)
+
+def ber_theory_awgn(snr_db, mod_type="QPSK"):
+    g = 10 ** (np.asarray(snr_db, dtype=float) / 10)
     if mod_type == "QPSK":
-        bits = bits[:num_symbols * 2].reshape(-1, 2)
-        x = np.zeros(len(bits), dtype=complex)
-        x[(bits[:,0]==0)&(bits[:,1]==0)] = 1 + 1j
-        x[(bits[:,0]==0)&(bits[:,1]==1)] = 1 - 1j
-        x[(bits[:,0]==1)&(bits[:,1]==0)] = -1 + 1j
-        x[(bits[:,0]==1)&(bits[:,1]==1)] = -1 - 1j
-        x /= np.sqrt(2)
+        return 0.5 * erfc(np.sqrt(g / 2))
+    if mod_type == "16QAM":  # aproximación de vecinos más cercanos
+        return 3 / 8 * erfc(np.sqrt(g / 10))
+    raise ValueError(mod_type)
 
-    else:  # 16QAM
-        bits = bits[:num_symbols * 4].reshape(-1, 4)
-        mapping = {(0,0):-3, (0,1):-1, (1,1):1, (1,0):3}
-        x = np.array([
-            mapping[tuple(b[:2])] + 1j * mapping[tuple(b[2:])]
-            for b in bits
-        ])
-        x /= np.sqrt(10)
 
-    x = x.reshape(N, L)
-
-    H = np.fft.fft(h, axis=0)
-    y = H * x
-
-    # AWGN
-    snr_db = 10
-    snr = 10**(snr_db/10)
-    noise_power = np.mean(np.abs(y)**2) / snr
-    noise = np.sqrt(noise_power/2) * (
-        np.random.randn(*y.shape) + 1j*np.random.randn(*y.shape)
-    )
-
-    y += noise
-
-    # ZF equalization
-    x_hat = y / (H + 1e-12)
-
-    x_hat = x_hat.reshape(-1)
-
-    # demapper
+def ber_theory_rayleigh(snr_db, mod_type="QPSK"):
+    """Rayleigh plano por subportadora con ZF (E|H|^2 = 1)."""
+    g = 10 ** (np.asarray(snr_db, dtype=float) / 10)
     if mod_type == "QPSK":
-        rx_bits = np.stack([
-            (np.real(x_hat) < 0),
-            (np.imag(x_hat) < 0)
-        ], axis=1).reshape(-1)
-
-        tx_bits = bits.reshape(-1)
-
-    else:
-        x_hat = x_hat * np.sqrt(10)
-        real = np.real(x_hat)
-        imag = np.imag(x_hat)
-
-        rx_bits = np.stack([
-            (real > 0),
-            (np.abs(real) < 2),
-            (imag > 0),
-            (np.abs(imag) < 2)
-        ], axis=1).reshape(-1)
-
-        tx_bits = bits.reshape(-1)
-
-    return np.mean(rx_bits != tx_bits)
+        a = g / 2
+        return 0.5 * (1 - np.sqrt(a / (1 + a)))
+    if mod_type == "16QAM":
+        a = g / 10
+        return 3 / 8 * (1 - np.sqrt(a / (1 + a)))
+    raise ValueError(mod_type)
