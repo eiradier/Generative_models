@@ -1,470 +1,63 @@
 
 ===== Entrenando DDPM con /home/user/generative_models/train_models/models_configs/dm_config.json =====
-Reanudando desde la época 19 (mejor loss 0.005604)
-Epoch 20 | Loss 0.005662
+Normalización por tap (escala 4.90, 0.0100% de valores recortados); scaler guardado en checkpoints/sodupe_180_tapnorm/DDPM
+Epoch 1 | Loss 0.145071
+Mejor modelo guardado (loss=0.145071)
+Epoch 2 | Loss 0.107844
+Mejor modelo guardado (loss=0.107844)
+Epoch 3 | Loss 0.103198
+Mejor modelo guardado (loss=0.103198)
+Epoch 4 | Loss 0.103062
+Mejor modelo guardado (loss=0.103062)
+Epoch 5 | Loss 0.100452
+Mejor modelo guardado (loss=0.100452)
+Epoch 6 | Loss 0.101747
 Sin mejora durante 1 epochs
-Epoch 21 | Loss 0.005761
+Epoch 7 | Loss 0.098966
+Mejor modelo guardado (loss=0.098966)
+Epoch 8 | Loss 0.096118
+Mejor modelo guardado (loss=0.096118)
+Epoch 9 | Loss 0.096589
+Sin mejora durante 1 epochs
+Epoch 10 | Loss 0.095078
+Mejor modelo guardado (loss=0.095078)
+Epoch 11 | Loss 0.098419
+Sin mejora durante 1 epochs
+Epoch 12 | Loss 0.093639
+Mejor modelo guardado (loss=0.093639)
+Epoch 13 | Loss 0.096006
+Sin mejora durante 1 epochs
+Epoch 14 | Loss 0.095811
 Sin mejora durante 2 epochs
-Epoch 22 | Loss 0.005691
+Epoch 15 | Loss 0.095519
 Sin mejora durante 3 epochs
-Epoch 23 | Loss 0.005363
-Mejor modelo guardado (loss=0.005363)
-Epoch 24 | Loss 0.005498
-Sin mejora durante 1 epochs
-Epoch 25 | Loss 0.005463
-Sin mejora durante 2 epochs
-Epoch 26 | Loss 0.005472
-Sin mejora durante 3 epochs
-Epoch 27 | Loss 0.005176
-Mejor modelo guardado (loss=0.005176)
-Epoch 28 | Loss 0.005399
-Sin mejora durante 1 epochs
-Epoch 29 | Loss 0.005284
-Sin mejora durante 2 epochs
-Epoch 30 | Loss 0.005204
-Sin mejora durante 3 epochs
-Epoch 31 | Loss 0.005056
-Mejor modelo guardado (loss=0.005056)
-Epoch 32 | Loss 0.005196
-Sin mejora durante 1 epochs
-Epoch 33 | Loss 0.005048
-Mejor modelo guardado (loss=0.005048)
-Epoch 34 | Loss 0.005077
-Sin mejora durante 1 epochs
-Epoch 35 | Loss 0.004928
-Mejor modelo guardado (loss=0.004928)
-Epoch 36 | Loss 0.005112
-Sin mejora durante 1 epochs
-Epoch 37 | Loss 0.005024
-Sin mejora durante 2 epochs
-Epoch 38 | Loss 0.004868
-Mejor modelo guardado (loss=0.004868)
-Epoch 39 | Loss 0.004894
-Sin mejora durante 1 epochs
-Epoch 40 | Loss 0.004871
-Sin mejora durante 2 epochs
-Epoch 41 | Loss 0.004764
-Mejor modelo guardado (loss=0.004764)
-Epoch 42 | Loss 0.005025
-Sin mejora durante 1 epochs
-Epoch 43 | Loss 0.004802
-Sin mejora durante 2 epochs
-Epoch 44 | Loss 0.004695
-Mejor modelo guardado (loss=0.004695)
-Epoch 45 | Loss 0.004765
-Sin mejora durante 1 epochs
-Epoch 46 | Loss 0.004845
-Sin mejora durante 2 epochs
-Epoch 47 | Loss 0.004748
-Sin mejora durante 3 epochs
-Epoch 48 | Loss 0.004605
-Mejor modelo guardado (loss=0.004605)
-Epoch 49 | Loss 0.004827
-Sin mejora durante 1 epochs
-Epoch 50 | Loss 0.004720
-Sin mejora durante 2 epochs
-Epoch 51 | Loss 0.004542
-Mejor modelo guardado (loss=0.004542)
-Epoch 52 | Loss 0.004789
-Sin mejora durante 1 epochs
-Epoch 53 | Loss 0.004604
-Sin mejora durante 2 epochs
-Epoch 54 | Loss 0.004601
-Sin mejora durante 3 epochs
-Epoch 55 | Loss 0.004620
+Epoch 16 | Loss 0.096381
 Sin mejora durante 4 epochs
-Epoch 56 | Loss 0.004610
-Sin mejora durante 5 epochs
-Epoch 57 | Loss 0.004598
-Sin mejora durante 6 epochs
-Epoch 58 | Loss 0.004460
-Mejor modelo guardado (loss=0.004460)
-Epoch 59 | Loss 0.004713
+Epoch 17 | Loss 0.092917
+Mejor modelo guardado (loss=0.092917)
+Epoch 18 | Loss 0.093807
 Sin mejora durante 1 epochs
-Epoch 60 | Loss 0.004414
-Mejor modelo guardado (loss=0.004414)
-Epoch 61 | Loss 0.004700
+Epoch 19 | Loss 0.092322
+Mejor modelo guardado (loss=0.092322)
+Epoch 20 | Loss 0.093318
 Sin mejora durante 1 epochs
-Epoch 62 | Loss 0.004377
-Mejor modelo guardado (loss=0.004377)
-Epoch 63 | Loss 0.004438
-Sin mejora durante 1 epochs
-Epoch 64 | Loss 0.004596
+Epoch 21 | Loss 0.093079
 Sin mejora durante 2 epochs
-Epoch 65 | Loss 0.004401
-Sin mejora durante 3 epochs
-Epoch 66 | Loss 0.004342
-Mejor modelo guardado (loss=0.004342)
-Epoch 67 | Loss 0.004378
+Epoch 22 | Loss 0.091254
+Mejor modelo guardado (loss=0.091254)
+Epoch 23 | Loss 0.091257
 Sin mejora durante 1 epochs
-Epoch 68 | Loss 0.004358
+Epoch 24 | Loss 0.090477
+Mejor modelo guardado (loss=0.090477)
+Epoch 25 | Loss 0.090460
+Mejor modelo guardado (loss=0.090460)
+Epoch 26 | Loss 0.090339
+Mejor modelo guardado (loss=0.090339)
+Epoch 27 | Loss 0.088314
+Mejor modelo guardado (loss=0.088314)
+Epoch 28 | Loss 0.086645
+Mejor modelo guardado (loss=0.086645)
+Epoch 29 | Loss 0.090095
+Sin mejora durante 1 epochs
+Epoch 30 | Loss 0.091347
 Sin mejora durante 2 epochs
-Epoch 69 | Loss 0.004428
-Sin mejora durante 3 epochs
-Epoch 70 | Loss 0.004467
-Sin mejora durante 4 epochs
-Epoch 71 | Loss 0.004287
-Mejor modelo guardado (loss=0.004287)
-Epoch 72 | Loss 0.004341
-Sin mejora durante 1 epochs
-Epoch 73 | Loss 0.004266
-Mejor modelo guardado (loss=0.004266)
-Epoch 74 | Loss 0.004335
-Sin mejora durante 1 epochs
-Epoch 75 | Loss 0.004322
-Sin mejora durante 2 epochs
-Epoch 76 | Loss 0.004377
-Sin mejora durante 3 epochs
-Epoch 77 | Loss 0.004433
-Sin mejora durante 4 epochs
-Epoch 78 | Loss 0.004421
-Sin mejora durante 5 epochs
-Epoch 79 | Loss 0.004256
-Mejor modelo guardado (loss=0.004256)
-Epoch 80 | Loss 0.004393
-Sin mejora durante 1 epochs
-Epoch 81 | Loss 0.004324
-Sin mejora durante 2 epochs
-Epoch 82 | Loss 0.004045
-Mejor modelo guardado (loss=0.004045)
-Epoch 83 | Loss 0.004098
-Sin mejora durante 1 epochs
-Epoch 84 | Loss 0.004220
-Sin mejora durante 2 epochs
-Epoch 85 | Loss 0.004144
-Sin mejora durante 3 epochs
-Epoch 86 | Loss 0.004016
-Mejor modelo guardado (loss=0.004016)
-Epoch 87 | Loss 0.004204
-Sin mejora durante 1 epochs
-Epoch 88 | Loss 0.004016
-Sin mejora durante 2 epochs
-Epoch 89 | Loss 0.004221
-Sin mejora durante 3 epochs
-Epoch 90 | Loss 0.004108
-Sin mejora durante 4 epochs
-Epoch 91 | Loss 0.004089
-Sin mejora durante 5 epochs
-Epoch 92 | Loss 0.004029
-Sin mejora durante 6 epochs
-Epoch 93 | Loss 0.004151
-Sin mejora durante 7 epochs
-Epoch 94 | Loss 0.004234
-Sin mejora durante 8 epochs
-Epoch 95 | Loss 0.004035
-Sin mejora durante 9 epochs
-Epoch 96 | Loss 0.003998
-Mejor modelo guardado (loss=0.003998)
-Epoch 97 | Loss 0.004032
-Sin mejora durante 1 epochs
-Epoch 98 | Loss 0.004297
-Sin mejora durante 2 epochs
-Epoch 99 | Loss 0.003898
-Mejor modelo guardado (loss=0.003898)
-Epoch 100 | Loss 0.004189
-Sin mejora durante 1 epochs
-Epoch 101 | Loss 0.004070
-Sin mejora durante 2 epochs
-Epoch 102 | Loss 0.003941
-Sin mejora durante 3 epochs
-Epoch 103 | Loss 0.004149
-Sin mejora durante 4 epochs
-Epoch 104 | Loss 0.003983
-Sin mejora durante 5 epochs
-Epoch 105 | Loss 0.004032
-Sin mejora durante 6 epochs
-Epoch 106 | Loss 0.004120
-Sin mejora durante 7 epochs
-Epoch 107 | Loss 0.004065
-Sin mejora durante 8 epochs
-Epoch 108 | Loss 0.003920
-Sin mejora durante 9 epochs
-Epoch 109 | Loss 0.003977
-Sin mejora durante 10 epochs
-Epoch 110 | Loss 0.003961
-Sin mejora durante 11 epochs
-Epoch 111 | Loss 0.003861
-Mejor modelo guardado (loss=0.003861)
-Epoch 112 | Loss 0.004080
-Sin mejora durante 1 epochs
-Epoch 113 | Loss 0.004070
-Sin mejora durante 2 epochs
-Epoch 114 | Loss 0.003895
-Sin mejora durante 3 epochs
-Epoch 115 | Loss 0.003860
-Sin mejora durante 4 epochs
-Epoch 116 | Loss 0.003980
-Sin mejora durante 5 epochs
-Epoch 117 | Loss 0.003823
-Mejor modelo guardado (loss=0.003823)
-Epoch 118 | Loss 0.003964
-Sin mejora durante 1 epochs
-Epoch 119 | Loss 0.003936
-Sin mejora durante 2 epochs
-Epoch 120 | Loss 0.003918
-Sin mejora durante 3 epochs
-Epoch 121 | Loss 0.003943
-Sin mejora durante 4 epochs
-Epoch 122 | Loss 0.003921
-Sin mejora durante 5 epochs
-Epoch 123 | Loss 0.003846
-Sin mejora durante 6 epochs
-Epoch 124 | Loss 0.003831
-Sin mejora durante 7 epochs
-Epoch 125 | Loss 0.003792
-Mejor modelo guardado (loss=0.003792)
-Epoch 126 | Loss 0.003805
-Sin mejora durante 1 epochs
-Epoch 127 | Loss 0.003827
-Sin mejora durante 2 epochs
-Epoch 128 | Loss 0.003882
-Sin mejora durante 3 epochs
-Epoch 129 | Loss 0.003718
-Mejor modelo guardado (loss=0.003718)
-Epoch 130 | Loss 0.003743
-Sin mejora durante 1 epochs
-Epoch 131 | Loss 0.003856
-Sin mejora durante 2 epochs
-Epoch 132 | Loss 0.003974
-Sin mejora durante 3 epochs
-Epoch 133 | Loss 0.003842
-Sin mejora durante 4 epochs
-Epoch 134 | Loss 0.003861
-Sin mejora durante 5 epochs
-Epoch 135 | Loss 0.003879
-Sin mejora durante 6 epochs
-Epoch 136 | Loss 0.003835
-Sin mejora durante 7 epochs
-Epoch 137 | Loss 0.003882
-Sin mejora durante 8 epochs
-Epoch 138 | Loss 0.003723
-Sin mejora durante 9 epochs
-Epoch 139 | Loss 0.003903
-Sin mejora durante 10 epochs
-Epoch 140 | Loss 0.003784
-Sin mejora durante 11 epochs
-Epoch 141 | Loss 0.003835
-Sin mejora durante 12 epochs
-Epoch 142 | Loss 0.003835
-Sin mejora durante 13 epochs
-Epoch 143 | Loss 0.003755
-Sin mejora durante 14 epochs
-Epoch 144 | Loss 0.003686
-Mejor modelo guardado (loss=0.003686)
-Epoch 145 | Loss 0.003784
-Sin mejora durante 1 epochs
-Epoch 146 | Loss 0.003771
-Sin mejora durante 2 epochs
-Epoch 147 | Loss 0.003885
-Sin mejora durante 3 epochs
-Epoch 148 | Loss 0.003626
-Mejor modelo guardado (loss=0.003626)
-Epoch 149 | Loss 0.003649
-Sin mejora durante 1 epochs
-Epoch 150 | Loss 0.003947
-Sin mejora durante 2 epochs
-Epoch 151 | Loss 0.003670
-Sin mejora durante 3 epochs
-Epoch 152 | Loss 0.003612
-Mejor modelo guardado (loss=0.003612)
-Epoch 153 | Loss 0.003677
-Sin mejora durante 1 epochs
-Epoch 154 | Loss 0.003627
-Sin mejora durante 2 epochs
-Epoch 155 | Loss 0.003763
-Sin mejora durante 3 epochs
-Epoch 156 | Loss 0.003684
-Sin mejora durante 4 epochs
-Epoch 157 | Loss 0.003770
-Sin mejora durante 5 epochs
-Epoch 158 | Loss 0.003733
-Sin mejora durante 6 epochs
-Epoch 159 | Loss 0.003683
-Sin mejora durante 7 epochs
-Epoch 160 | Loss 0.003687
-Sin mejora durante 8 epochs
-Epoch 161 | Loss 0.003708
-Sin mejora durante 9 epochs
-Epoch 162 | Loss 0.003788
-Sin mejora durante 10 epochs
-Epoch 163 | Loss 0.003750
-Sin mejora durante 11 epochs
-Epoch 164 | Loss 0.003637
-Sin mejora durante 12 epochs
-Epoch 165 | Loss 0.003787
-Sin mejora durante 13 epochs
-Epoch 166 | Loss 0.003899
-Sin mejora durante 14 epochs
-Epoch 167 | Loss 0.003699
-Sin mejora durante 15 epochs
-Epoch 168 | Loss 0.003569
-Mejor modelo guardado (loss=0.003569)
-Epoch 169 | Loss 0.003781
-Sin mejora durante 1 epochs
-Epoch 170 | Loss 0.003671
-Sin mejora durante 2 epochs
-Epoch 171 | Loss 0.003804
-Sin mejora durante 3 epochs
-Epoch 172 | Loss 0.003638
-Sin mejora durante 4 epochs
-Epoch 173 | Loss 0.003827
-Sin mejora durante 5 epochs
-Epoch 174 | Loss 0.003625
-Sin mejora durante 6 epochs
-Epoch 175 | Loss 0.003576
-Sin mejora durante 7 epochs
-Epoch 176 | Loss 0.003848
-Sin mejora durante 8 epochs
-Epoch 177 | Loss 0.003682
-Sin mejora durante 9 epochs
-Epoch 178 | Loss 0.003683
-Sin mejora durante 10 epochs
-Epoch 179 | Loss 0.003635
-Sin mejora durante 11 epochs
-Epoch 180 | Loss 0.003558
-Mejor modelo guardado (loss=0.003558)
-Epoch 181 | Loss 0.003774
-Sin mejora durante 1 epochs
-Epoch 182 | Loss 0.003719
-Sin mejora durante 2 epochs
-Epoch 183 | Loss 0.003647
-Sin mejora durante 3 epochs
-Epoch 184 | Loss 0.003548
-Mejor modelo guardado (loss=0.003548)
-Epoch 185 | Loss 0.003555
-Sin mejora durante 1 epochs
-Epoch 186 | Loss 0.003598
-Sin mejora durante 2 epochs
-Epoch 187 | Loss 0.003598
-Sin mejora durante 3 epochs
-Epoch 188 | Loss 0.003592
-Sin mejora durante 4 epochs
-Epoch 189 | Loss 0.003634
-Sin mejora durante 5 epochs
-Epoch 190 | Loss 0.003654
-Sin mejora durante 6 epochs
-Epoch 191 | Loss 0.003712
-Sin mejora durante 7 epochs
-Epoch 192 | Loss 0.003670
-Sin mejora durante 8 epochs
-Epoch 193 | Loss 0.003621
-Sin mejora durante 9 epochs
-Epoch 194 | Loss 0.003669
-Sin mejora durante 10 epochs
-Epoch 195 | Loss 0.003691
-Sin mejora durante 11 epochs
-Epoch 196 | Loss 0.003561
-Sin mejora durante 12 epochs
-Epoch 197 | Loss 0.003509
-Mejor modelo guardado (loss=0.003509)
-Epoch 198 | Loss 0.003489
-Mejor modelo guardado (loss=0.003489)
-Epoch 199 | Loss 0.003762
-Sin mejora durante 1 epochs
-Epoch 200 | Loss 0.003616
-Sin mejora durante 2 epochs
-Epoch 201 | Loss 0.003513
-Sin mejora durante 3 epochs
-Epoch 202 | Loss 0.003642
-Sin mejora durante 4 epochs
-Epoch 203 | Loss 0.003669
-Sin mejora durante 5 epochs
-Epoch 204 | Loss 0.003567
-Sin mejora durante 6 epochs
-Epoch 205 | Loss 0.003556
-Sin mejora durante 7 epochs
-Epoch 206 | Loss 0.003605
-Sin mejora durante 8 epochs
-Epoch 207 | Loss 0.003571
-Sin mejora durante 9 epochs
-Epoch 208 | Loss 0.003525
-Sin mejora durante 10 epochs
-Epoch 209 | Loss 0.003617
-Sin mejora durante 11 epochs
-Epoch 210 | Loss 0.003597
-Sin mejora durante 12 epochs
-Epoch 211 | Loss 0.003595
-Sin mejora durante 13 epochs
-Epoch 212 | Loss 0.003522
-Sin mejora durante 14 epochs
-Epoch 213 | Loss 0.003560
-Sin mejora durante 15 epochs
-Epoch 214 | Loss 0.003548
-Sin mejora durante 16 epochs
-Epoch 215 | Loss 0.003712
-Sin mejora durante 17 epochs
-Epoch 216 | Loss 0.003548
-Sin mejora durante 18 epochs
-Epoch 217 | Loss 0.003572
-Sin mejora durante 19 epochs
-Epoch 218 | Loss 0.003488
-Sin mejora durante 20 epochs
-Epoch 219 | Loss 0.003577
-Sin mejora durante 21 epochs
-Epoch 220 | Loss 0.003563
-Sin mejora durante 22 epochs
-Epoch 221 | Loss 0.003422
-Mejor modelo guardado (loss=0.003422)
-Epoch 222 | Loss 0.003507
-Sin mejora durante 1 epochs
-Epoch 223 | Loss 0.003606
-Sin mejora durante 2 epochs
-Epoch 224 | Loss 0.003660
-Sin mejora durante 3 epochs
-Epoch 225 | Loss 0.003434
-Sin mejora durante 4 epochs
-Epoch 226 | Loss 0.003619
-Sin mejora durante 5 epochs
-Epoch 227 | Loss 0.003551
-Sin mejora durante 6 epochs
-Epoch 228 | Loss 0.003611
-Sin mejora durante 7 epochs
-Epoch 229 | Loss 0.003453
-Sin mejora durante 8 epochs
-Epoch 230 | Loss 0.003508
-Sin mejora durante 9 epochs
-Epoch 231 | Loss 0.003543
-Sin mejora durante 10 epochs
-Epoch 232 | Loss 0.003596
-Sin mejora durante 11 epochs
-Epoch 233 | Loss 0.003577
-Sin mejora durante 12 epochs
-Epoch 234 | Loss 0.003548
-Sin mejora durante 13 epochs
-Epoch 235 | Loss 0.003494
-Sin mejora durante 14 epochs
-Epoch 236 | Loss 0.003520
-Sin mejora durante 15 epochs
-Epoch 237 | Loss 0.003486
-Sin mejora durante 16 epochs
-Epoch 238 | Loss 0.003562
-Sin mejora durante 17 epochs
-Epoch 239 | Loss 0.003513
-Sin mejora durante 18 epochs
-Epoch 240 | Loss 0.003482
-Sin mejora durante 19 epochs
-Epoch 241 | Loss 0.003467
-Sin mejora durante 20 epochs
-Epoch 242 | Loss 0.003523
-Sin mejora durante 21 epochs
-Epoch 243 | Loss 0.003625
-Sin mejora durante 22 epochs
-Epoch 244 | Loss 0.003600
-Sin mejora durante 23 epochs
-Epoch 245 | Loss 0.003476
-Sin mejora durante 24 epochs
-Epoch 246 | Loss 0.003443
-Sin mejora durante 25 epochs
-Epoch 247 | Loss 0.003550
-Sin mejora durante 26 epochs
-Epoch 248 | Loss 0.003554
-Sin mejora durante 27 epochs
-Epoch 249 | Loss 0.003514
-Sin mejora durante 28 epochs
-Epoch 250 | Loss 0.003503
-Sin mejora durante 29 epochs
-Epoch 251 | Loss 0.003468
-Sin mejora durante 30 epochs
-Early stopping
-===== DDPM terminado en 87.8 min =====
-Generado ddpm (3000, 2, 200)
