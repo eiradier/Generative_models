@@ -1,24 +1,66 @@
 import numpy as np
 import os
-import h5py
 from matplotlib import pyplot as plt
 
-def load_loopback_data(mat_path, L=200, save_path="data/dataset_loopback.npy"):
-    print(f"Cargando archivo: {mat_path} ...")
+def _load_complex_matrix(path, mat_key="est_RX_t"):
+    """
+    Carga una matriz compleja de canales desde .npy (complejo) o .mat (HDF5, v7.3).
+    Devuelve el array tal cual viene en el archivo (sin reorientar).
+    """
+    ext = os.path.splitext(path)[1].lower()
 
-    f = h5py.File(mat_path, "r")
+    if ext == ".npy":
+        H = np.load(path)
+        if not np.iscomplexobj(H):
+            raise ValueError(f"Se esperaba un array complejo en {path}, pero el dtype es {H.dtype}")
+        return np.nan_to_num(H, nan=0.0)
 
-    H_struct = f["est_RX_t"][...]
+    if ext == ".mat":
+        import h5py  # solo hace falta para los .mat
+        with h5py.File(path, "r") as f:
+            H_struct = f[mat_key][...]
+        H_real = np.nan_to_num(H_struct["real"], nan=0.0)
+        H_imag = np.nan_to_num(H_struct["imag"], nan=0.0)
+        return H_real + 1j * H_imag
 
-    print("Shape original:", H_struct.shape)
-    print("dtype:", H_struct.dtype)
+    raise ValueError(f"Formato no soportado: {ext} (usa .npy o .mat)")
 
-    H_real = np.nan_to_num(H_struct["real"], nan=0.0)
-    H_imag = np.nan_to_num(H_struct["imag"], nan=0.0)
 
-    H = H_real + 1j * H_imag
+def load_loopback_data(data_path, L=200, save_path="data/datos_loopback/dataset_loopback.npy",
+                       taps_axis=0, mat_key="est_RX_t"):
+    """
+    Preprocesa medidas reales de canal loopback.
 
-    print("Shape complejo:", H.shape)
+    data_path : .npy complejo (p. ej. ch_sodupe_180_time.npy) o .mat HDF5 (campo est_RX_t).
+    L         : número de taps de retardo que se conservan.
+    taps_axis : eje del array que corresponde a los taps de retardo.
+                - .npy exportados desde MATLAB (ch_*_time.npy): (taps, canales) -> taps_axis=0
+                - .mat leídos con h5py (ya traspuestos):         (canales, taps) -> taps_axis=1
+
+    Devuelve y guarda un array float32 de forma (N_canales, 2, L) [real, imag] en [-1, 1].
+    """
+    print(f"Cargando archivo: {data_path} ...")
+
+    H = _load_complex_matrix(data_path, mat_key=mat_key)
+
+    print("Shape original:", H.shape)
+    print("dtype:", H.dtype)
+
+    # Orientar a (canales, taps)
+    if taps_axis == 0:
+        H = H.T
+    elif taps_axis != 1:
+        raise ValueError("taps_axis debe ser 0 o 1")
+
+    print("Shape (canales x taps):", H.shape)
+
+    # Comprobación: la energía debe concentrarse en los primeros taps
+    pdp = np.mean(np.abs(H) ** 2, axis=0)
+    frac_L = pdp[:L].sum() / (pdp.sum() + 1e-12)
+    print(f"Tap con más energía media: {pdp.argmax()} | energía en los primeros {L} taps: {100 * frac_L:.2f}%")
+    if frac_L < 0.5:
+        print("AVISO: menos del 50% de la energía está en los primeros taps. "
+              "¿Es correcto taps_axis?")
 
     H = H[:, :L]
     print(f"Shape tras recorte a L={L}:", H.shape)
@@ -84,6 +126,7 @@ def load_synthetic_data(file_path, L=128, save_path="data/datos_sinteticos/TDL_D
     return dataset
 
 def load_nist_data(mat_path, L=128, save_path="data/datos_reales/dataset_nist.npy"):
+    import h5py  # solo hace falta para los .mat
     print(f"Cargando archivo {mat_path} ...")
     f = h5py.File(mat_path, "r")
 
@@ -332,22 +375,39 @@ def analyze_dataset(data, save_dir="data/datos_sinteticos", num_examples=5, heat
     print("\nAnálisis completado.")
 
 if __name__ == "__main__":
-    data_sintetico = load_synthetic_data(
-        "data/datos_sinteticos/TDL_D_85ns_fd1000_SNR20_h_real.npy",
-        L=128,
-        save_path="data/datos_sinteticos/dataset_synthetic.npy"
-    )
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Preprocesado de medidas de canal loopback")
+    parser.add_argument("--input", default="data/medidas/ch_sodupe_180_time.npy",
+                        help="Medidas de canal (.npy complejo o .mat HDF5)")
+    parser.add_argument("--output", default="data/datos_loopback/ch_sodupe_180_time_L200.npy",
+                        help="Ruta del dataset preprocesado (N, 2, L)")
+    parser.add_argument("--L", type=int, default=200, help="Número de taps que se conservan")
+    parser.add_argument("--taps-axis", type=int, default=0, choices=[0, 1],
+                        help="Eje de los taps en el archivo de entrada (0 para los ch_*_time.npy)")
+    parser.add_argument("--no-plots", action="store_true", help="No generar las figuras de análisis")
+    args = parser.parse_args()
+
     data_loopback = load_loopback_data(
-        "data/datos_loopback/new_ch_time_worst.mat",
-        L=200,
-        save_path="data/datos_loopback/new_ch_time_worst.npy"
-    )
-    data_nist = load_nist_data(
-        "data/datos_NIST/NIST_Samples.mat",
-        L=128,
-        save_path="data/datos_NIST/h_AAplant_5G.npy"
+        args.input,
+        L=args.L,
+        save_path=args.output,
+        taps_axis=args.taps_axis,
     )
 
-    analyze_dataset(data_sintetico, save_dir="data/datos_sinteticos", filtrar_zeros=True,  eps=1e-6)
-    analyze_dataset(data_loopback,  save_dir="data/datos_loopback",   filtrar_zeros=False)
-    analyze_dataset(data_nist, save_dir="data/datos_NIST/h_AAplant_5G", filtrar_zeros=True,  eps=1e-4)
+    if not args.no_plots:
+        analyze_dataset(data_loopback, save_dir=os.path.dirname(args.output), filtrar_zeros=False)
+
+    # Otros datasets (descomentar si se necesitan):
+    # data_sintetico = load_synthetic_data(
+    #     "data/datos_sinteticos/TDL_D_85ns_fd1000_SNR20_h_real.npy",
+    #     L=128,
+    #     save_path="data/datos_sinteticos/dataset_synthetic.npy"
+    # )
+    # analyze_dataset(data_sintetico, save_dir="data/datos_sinteticos", filtrar_zeros=True, eps=1e-6)
+    # data_nist = load_nist_data(
+    #     "data/datos_NIST/NIST_Samples.mat",
+    #     L=128,
+    #     save_path="data/datos_NIST/h_AAplant_5G.npy"
+    # )
+    # analyze_dataset(data_nist, save_dir="data/datos_NIST/h_AAplant_5G", filtrar_zeros=True, eps=1e-4)

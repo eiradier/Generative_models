@@ -6,7 +6,7 @@
   },
 
   "dataset": {
-    "path": "data/datos_loopback/new_ch_time_worst.npy"
+    "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy"
   },
 
   "model": {
@@ -34,7 +34,7 @@
   },
 
   "paths": {
-    "save_dir": "checkpoints/datos_loopback/WGAN_Conv1D",
+    "save_dir": "checkpoints/sodupe_180/WGAN_Conv1D",
     "best_model": "best_model.pth"
   }
 }
