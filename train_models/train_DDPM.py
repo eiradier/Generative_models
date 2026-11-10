@@ -180,7 +180,29 @@ def train(config_path):
     best_loss = float('inf')
     epochs_no_improve = 0
 
-    for epoch in range(1, config["training"]["epochs"] + 1):
+    # Reanudación: last.pth guarda el estado completo al final de cada época
+    last_path = os.path.join(config["paths"]["save_dir"], "last.pth")
+    start_epoch = 1
+    if os.path.exists(last_path):
+        st = torch.load(last_path, map_location=device, weights_only=False)
+        if st.get("finished"):
+            print(f"El entrenamiento ya había terminado (época {st['epoch']}); no se repite.")
+            return
+        model.load_state_dict(st["model"])
+        opt.load_state_dict(st["opt"])
+        start_epoch = st["epoch"] + 1
+        best_loss = st["best_loss"]
+        epochs_no_improve = st["epochs_no_improve"]
+        print(f"Reanudando desde la época {st['epoch']} (mejor loss {best_loss:.6f})")
+
+    def save_last(epoch, finished=False):
+        torch.save({"model": model.state_dict(), "opt": opt.state_dict(), "epoch": epoch,
+                    "best_loss": best_loss, "epochs_no_improve": epochs_no_improve,
+                    "finished": finished}, last_path)
+
+    epoch = start_epoch - 1
+
+    for epoch in range(start_epoch, config["training"]["epochs"] + 1):
         loss_avg = 0.0
 
         for (x,) in loader:
@@ -210,6 +232,10 @@ def train(config_path):
             epochs_no_improve += 1
             print(f"Sin mejora durante {epochs_no_improve} epochs")
 
+        save_last(epoch)
+
         if epochs_no_improve >= config["training"]["patience"]:
             print(f"Early stopping")
             break
+
+    save_last(epoch, finished=True)

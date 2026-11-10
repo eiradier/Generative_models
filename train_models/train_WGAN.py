@@ -134,7 +134,7 @@ def psd_similarity(real, fake):
         fake_psd = torch.log(torch.abs(torch.fft.rfft(fake, dim=-1)) ** 2 + 1e-8).mean(dim=0)
         return F.mse_loss(fake_psd, real_psd).item()
 
-def train_gan(G, C, loader, device, config, start_epoch=1, best_score=float("inf")):
+def train_gan(G, C, loader, device, config, resume=None):
     # El critic no clasifica, asigna una "energía" o score real-valued
     # Objetivo: aproximar la distancia entre distribuciones (Wasserstein)
     training = config["training"]
@@ -158,7 +158,23 @@ def train_gan(G, C, loader, device, config, start_epoch=1, best_score=float("inf
 
     # El mejor modelo se elige comparando canales generados con los reales (ver quality.py)
     quality = ChannelQuality(loader.dataset.tensors[0])
-    epochs_no_improve = 0
+    start_epoch, best_score, epochs_no_improve = 1, float("inf"), 0
+
+    # Reanudación desde last.pth (estado completo al final de la última época)
+    last_path = os.path.join(paths["save_dir"], "last.pth")
+    if resume is not None:
+        optC.load_state_dict(resume["optC"])
+        optG.load_state_dict(resume["optG"])
+        start_epoch = resume["epoch"] + 1
+        best_score = resume["best_score"]
+        epochs_no_improve = resume["epochs_no_improve"]
+
+    def save_last(epoch, finished=False):
+        torch.save({"G": G.state_dict(), "C": C.state_dict(), "optG": optG.state_dict(),
+                    "optC": optC.state_dict(), "epoch": epoch, "best_score": best_score,
+                    "epochs_no_improve": epochs_no_improve, "finished": finished}, last_path)
+
+    epoch = start_epoch - 1
 
     ### Bucle del ENTRENAMIENTO principal ###
     for epoch in range(start_epoch, epochs + 1):
@@ -255,10 +271,13 @@ def train_gan(G, C, loader, device, config, start_epoch=1, best_score=float("inf
         else:
             epochs_no_improve += 1
 
+        save_last(epoch)
+
         if epochs_no_improve >= patience:
             print(f"Early stopping en epoch {epoch}")
             break
 
+    save_last(epoch, finished=True)
     print("Entrenamiento completado. Modelos guardados en", paths["save_dir"])
 
 def train(config_path):
@@ -285,37 +304,18 @@ def train(config_path):
         config["model"]["signal_length"]
     ).to(device)
 
-    best_model_path = os.path.join(
-        config["paths"]["save_dir"],
-        config["paths"]["best_model"]
-    )
-
-    start_epoch = 1
-    best_score = float("inf")
-
-    if os.path.exists(best_model_path):
-
-        print(f"Cargando modelo existente: {best_model_path}")
-
-        checkpoint = torch.load(
-            best_model_path,
-            map_location=device
-        )
-
-        G.load_state_dict(checkpoint["G"])
-        C.load_state_dict(checkpoint["C"])
-
-        start_epoch = checkpoint["epoch"] + 1
-        best_score = checkpoint.get("score", float("inf"))
-
-        print(
-            f"Reanudando desde epoch {checkpoint['epoch']} "
-            f"(score={best_score:.4f})"
-        )
-
+    last_path = os.path.join(config["paths"]["save_dir"], "last.pth")
+    resume = None
+    if os.path.exists(last_path):
+        resume = torch.load(last_path, map_location=device, weights_only=False)
+        if resume.get("finished"):
+            print(f"El entrenamiento ya había terminado (época {resume['epoch']}); no se repite.")
+            return
+        G.load_state_dict(resume["G"])
+        C.load_state_dict(resume["C"])
+        print(f"Reanudando desde la época {resume['epoch']} (mejor score {resume['best_score']:.3f})")
     else:
         G.apply(weights_init)
         C.apply(weights_init)
 
-    train_gan(G, C, loader, device, config,
-              start_epoch=start_epoch, best_score=best_score)
+    train_gan(G, C, loader, device, config, resume=resume)
