@@ -27,7 +27,7 @@ def _load_complex_matrix(path, mat_key="est_RX_t"):
 
 
 def load_loopback_data(data_path, L=200, save_path="data/datos_loopback/dataset_loopback.npy",
-                       taps_axis=0, mat_key="est_RX_t"):
+                       taps_axis=0, mat_key="est_RX_t", verify_dir=None):
     """
     Preprocesa medidas reales de canal loopback.
 
@@ -36,6 +36,9 @@ def load_loopback_data(data_path, L=200, save_path="data/datos_loopback/dataset_
     taps_axis : eje del array que corresponde a los taps de retardo.
                 - .npy exportados desde MATLAB (ch_*_time.npy): (taps, canales) -> taps_axis=0
                 - .mat leídos con h5py (ya traspuestos):         (canales, taps) -> taps_axis=1
+
+    verify_dir: si se indica, guarda ahí la figura de verificación del preprocesado
+                (ver verify_preprocessing).
 
     Devuelve y guarda un array float32 de forma (N_canales, 2, L) [real, imag] en [-1, 1].
     """
@@ -62,6 +65,7 @@ def load_loopback_data(data_path, L=200, save_path="data/datos_loopback/dataset_
         print("AVISO: menos del 50% de la energía está en los primeros taps. "
               "¿Es correcto taps_axis?")
 
+    H_full = H  # canales completos (sin recortar), para la verificación
     H = H[:, :L]
     print(f"Shape tras recorte a L={L}:", H.shape)
 
@@ -88,7 +92,125 @@ def load_loopback_data(data_path, L=200, save_path="data/datos_loopback/dataset_
 
     print("Dataset guardado en:", save_path)
 
+    if verify_dir is not None:
+        verify_preprocessing(H_full, dataset, L, save_dir=verify_dir)
+
     return dataset
+
+
+def verify_preprocessing(H_full, dataset, L, save_dir="data/datos_loopback", example_idx=None, num_heatmap=200):
+    """
+    Comprueba que el preprocesado es correcto comparando las medidas originales
+    (orientadas a (canales, taps), sin recortar) con el dataset final (N, 2, L).
+
+    Figura "verificacion_preprocesado.png" (2x2):
+      (a) PDP medio en dB de TODOS los taps, con el corte en L. Si los ejes estuvieran
+          intercambiados no se vería un decaimiento con el retardo.
+      (b) |h| en dB de canales aleatorios antes del recorte: la energía debe estar a la
+          izquierda de la línea de corte.
+      (c) Un canal antes y después del preprocesado (parte real e imaginaria, el original
+          reescalado): las curvas deben coincidir punto a punto.
+      (d) Energía de cada canal antes (original, varía) y después (debe ser constante).
+
+    También imprime comprobaciones numéricas y lanza AssertionError si alguna falla.
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    N, L_total = H_full.shape
+    assert dataset.shape == (N, 2, L), f"Shape inesperada {dataset.shape}, se esperaba {(N, 2, L)}"
+
+    H_crop = H_full[:, :L]
+    H_proc = dataset[:, 0, :].astype(np.float64) + 1j * dataset[:, 1, :].astype(np.float64)
+
+    # Comprobaciones numéricas
+    # 1) Cada canal procesado debe ser el original multiplicado por un escalar real positivo
+    #    (1 / (energía * max_abs)): mismo shape temporal y misma fase.
+    num = np.sum(H_proc * np.conj(H_crop), axis=1)
+    escala = np.abs(num) / (np.sum(np.abs(H_crop) ** 2, axis=1) + 1e-30)
+    err_rel = np.linalg.norm(H_proc - escala[:, None] * H_crop, axis=1) / (np.linalg.norm(H_proc, axis=1) + 1e-30)
+    fase_media = np.angle(num)
+    # 2) Energía por canal tras la normalización: debe ser la misma para todos
+    energia_proc = np.sum(np.abs(H_proc) ** 2, axis=1)
+    disp_energia = energia_proc.std() / energia_proc.mean()
+    # 3) Fracción de energía conservada con el recorte
+    pdp = np.mean(np.abs(H_full) ** 2, axis=0)
+    frac_L = pdp[:L].sum() / pdp.sum()
+
+    print("\nVERIFICACIÓN DEL PREPROCESADO")
+    print(f"Canales: {N} | taps originales: {L_total} | taps conservados: {L}")
+    print(f"NaN/Inf en el dataset: {int((~np.isfinite(dataset)).sum())}")
+    print(f"Rango: [{dataset.min():.4f}, {dataset.max():.4f}]")
+    print(f"Energía conservada en los primeros {L} taps (PDP medio): {100 * frac_L:.3f}%")
+    print(f"Error relativo máx. procesado vs original reescalado: {err_rel.max():.2e}")
+    print(f"Desfase máx. procesado vs original: {np.abs(fase_media).max():.2e} rad")
+    print(f"Dispersión de la energía por canal tras normalizar (std/media): {disp_energia:.2e}")
+
+    assert np.all(np.isfinite(dataset)), "El dataset contiene NaN o Inf"
+    assert np.abs(dataset).max() <= 1.0 + 1e-6, "El dataset se sale de [-1, 1]"
+    assert err_rel.max() < 1e-3, "Algún canal procesado no es una versión escalada del original"
+    assert np.abs(fase_media).max() < 1e-3, "Algún canal procesado tiene la fase cambiada"
+    assert disp_energia < 1e-3, "La energía por canal no es constante tras normalizar"
+    if frac_L < 0.9:
+        print(f"AVISO: solo el {100 * frac_L:.1f}% de la energía está en los primeros {L} taps")
+
+    # Figura
+    rng = np.random.default_rng(0)
+    if example_idx is None:
+        example_idx = int(rng.integers(N))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 9))
+
+    # (a) PDP medio de todos los taps
+    ax = axes[0, 0]
+    pdp_db = 10 * np.log10(pdp / pdp.max() + 1e-20)
+    ax.plot(np.arange(L_total), pdp_db)
+    ax.axvline(L - 0.5, color="r", ls="--", label=f"Corte L={L}")
+    ax.set_title(f"(a) PDP medio (todos los taps) - {100 * frac_L:.2f}% de energía en [0, L)")
+    ax.set_xlabel("Tap (índice de retardo)")
+    ax.set_ylabel("Potencia media normalizada [dB]")
+    ax.legend()
+    ax.grid(alpha=0.3)
+
+    # (b) Heatmap de canales originales sin recortar
+    ax = axes[0, 1]
+    idx = np.sort(rng.choice(N, min(num_heatmap, N), replace=False))
+    mag_db = 20 * np.log10(np.abs(H_full[idx]) / np.abs(H_full[idx]).max(axis=1, keepdims=True) + 1e-12)
+    im = ax.imshow(mag_db, aspect="auto", cmap="viridis", vmin=-60, vmax=0, interpolation="nearest")
+    ax.axvline(L - 0.5, color="r", ls="--")
+    fig.colorbar(im, ax=ax, label="|h| normalizada [dB]")
+    ax.set_title(f"(b) |h| original de {len(idx)} canales (antes del recorte)")
+    ax.set_xlabel("Tap (índice de retardo)")
+    ax.set_ylabel("Canal (muestra aleatoria)")
+
+    # (c) Un canal antes / después
+    ax = axes[1, 0]
+    k = example_idx
+    orig = escala[k] * H_crop[k]
+    taps = np.arange(L)
+    ax.plot(taps, orig.real, color="C0", lw=2, alpha=0.5, label="Original reescalado (Re)")
+    ax.plot(taps, dataset[k, 0], "o", color="C0", ms=2.5, label="Procesado (Re)")
+    ax.plot(taps, orig.imag, color="C1", lw=2, alpha=0.5, label="Original reescalado (Im)")
+    ax.plot(taps, dataset[k, 1], "o", color="C1", ms=2.5, label="Procesado (Im)")
+    ax.set_title(f"(c) Canal {k}: original vs procesado (error rel. {err_rel[k]:.1e})")
+    ax.set_xlabel("Tap (índice de retardo)")
+    ax.set_ylabel("Amplitud")
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.3)
+
+    # (d) Energía por canal antes y después
+    ax = axes[1, 1]
+    energia_orig = np.sum(np.abs(H_crop) ** 2, axis=1)
+    ax.plot(10 * np.log10(energia_orig / energia_orig.mean()), lw=0.6, label="Original (primeros L taps)")
+    ax.plot(10 * np.log10(energia_proc / energia_proc.mean()), lw=1.5, label="Procesado")
+    ax.set_title("(d) Energía por canal relativa a la media")
+    ax.set_xlabel("Índice de canal")
+    ax.set_ylabel("Energía relativa [dB]")
+    ax.legend()
+    ax.grid(alpha=0.3)
+
+    plt.tight_layout()
+    out = os.path.join(save_dir, "verificacion_preprocesado.png")
+    plt.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Figura de verificación guardada en: {out}")
 
 
 def analyze_dataset(data, save_dir="data/datos_loopback", num_examples=5, heatmap_channels=100, filtrar_zeros=False, eps=1e-6):
@@ -258,6 +380,7 @@ if __name__ == "__main__":
         L=args.L,
         save_path=args.output,
         taps_axis=args.taps_axis,
+        verify_dir=None if args.no_plots else os.path.dirname(args.output),
     )
 
     if not args.no_plots:
