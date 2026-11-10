@@ -27,7 +27,7 @@ def _load_complex_matrix(path, mat_key="est_RX_t"):
 
 
 def load_loopback_data(data_path, L=200, save_path="data/datos_loopback/dataset_loopback.npy",
-                       taps_axis=0, mat_key="est_RX_t", verify_dir=None):
+                       taps_axis=0, mat_key="est_RX_t", min_energy_db=-8.0, verify_dir=None):
     """
     Preprocesa medidas reales de canal loopback.
 
@@ -37,6 +37,9 @@ def load_loopback_data(data_path, L=200, save_path="data/datos_loopback/dataset_
                 - .npy exportados desde MATLAB (ch_*_time.npy): (taps, canales) -> taps_axis=0
                 - .mat leídos con h5py (ya traspuestos):         (canales, taps) -> taps_axis=1
 
+    min_energy_db: descarta los canales cuya energía (en los primeros L taps) esté más de
+                   |min_energy_db| dB por debajo de la mediana. Son medidas anómalas (caídas de
+                   señal) que la normalización por energía amplificaría. None para no filtrar.
     verify_dir: si se indica, guarda ahí la figura de verificación del preprocesado
                 (ver verify_preprocessing).
 
@@ -69,6 +72,20 @@ def load_loopback_data(data_path, L=200, save_path="data/datos_loopback/dataset_
     H = H[:, :L]
     print(f"Shape tras recorte a L={L}:", H.shape)
 
+    # Descartar canales con energía anómalamente baja
+    energy_db = 10 * np.log10(np.sum(np.abs(H) ** 2, axis=1) + 1e-30)
+    energy_db_rel = energy_db - np.median(energy_db)
+    if min_energy_db is None:
+        keep = np.ones(len(H), dtype=bool)
+    else:
+        keep = energy_db_rel >= min_energy_db
+        descartados = np.where(~keep)[0]
+        print(f"Canales descartados por baja energía (< {min_energy_db} dB respecto a la mediana): "
+              f"{len(descartados)} de {len(H)}")
+        if len(descartados) > 0:
+            print("  Índices:", descartados.tolist())
+    H = H[keep]
+
     H_real = np.real(H)
     H_imag = np.imag(H)
 
@@ -93,12 +110,14 @@ def load_loopback_data(data_path, L=200, save_path="data/datos_loopback/dataset_
     print("Dataset guardado en:", save_path)
 
     if verify_dir is not None:
-        verify_preprocessing(H_full, dataset, L, save_dir=verify_dir)
+        verify_preprocessing(H_full, dataset, L, save_dir=verify_dir,
+                             keep=keep, min_energy_db=min_energy_db)
 
     return dataset
 
 
-def verify_preprocessing(H_full, dataset, L, save_dir="data/datos_loopback", example_idx=None, num_heatmap=200):
+def verify_preprocessing(H_full, dataset, L, save_dir="data/datos_loopback", keep=None, min_energy_db=None,
+                         example_idx=None, num_heatmap=200):
     """
     Comprueba que el preprocesado es correcto comparando las medidas originales
     (orientadas a (canales, taps), sin recortar) con el dataset final (N, 2, L).
@@ -110,11 +129,18 @@ def verify_preprocessing(H_full, dataset, L, save_dir="data/datos_loopback", exa
           izquierda de la línea de corte.
       (c) Un canal antes y después del preprocesado (parte real e imaginaria, el original
           reescalado): las curvas deben coincidir punto a punto.
-      (d) Energía de cada canal antes (original, varía) y después (debe ser constante).
+      (d) Energía de cada canal antes (original, varía) y después (debe ser constante),
+          con el umbral de descarte y los canales descartados marcados.
+
+    keep: máscara booleana de los canales conservados (si se filtró alguno).
 
     También imprime comprobaciones numéricas y lanza AssertionError si alguna falla.
     """
     os.makedirs(save_dir, exist_ok=True)
+    if keep is None:
+        keep = np.ones(len(H_full), dtype=bool)
+    H_all = H_full          # todos los canales medidos
+    H_full = H_full[keep]   # solo los conservados
     N, L_total = H_full.shape
     assert dataset.shape == (N, 2, L), f"Shape inesperada {dataset.shape}, se esperaba {(N, 2, L)}"
 
@@ -197,10 +223,16 @@ def verify_preprocessing(H_full, dataset, L, save_dir="data/datos_loopback", exa
 
     # (d) Energía por canal antes y después
     ax = axes[1, 1]
-    energia_orig = np.sum(np.abs(H_crop) ** 2, axis=1)
-    ax.plot(10 * np.log10(energia_orig / energia_orig.mean()), lw=0.6, label="Original (primeros L taps)")
-    ax.plot(10 * np.log10(energia_proc / energia_proc.mean()), lw=1.5, label="Procesado")
-    ax.set_title("(d) Energía por canal relativa a la media")
+    e_all_db = 10 * np.log10(np.sum(np.abs(H_all[:, :L]) ** 2, axis=1))
+    e_all_db -= np.median(e_all_db)
+    idx_all = np.arange(len(H_all))
+    ax.plot(idx_all, e_all_db, lw=0.6, label="Original (primeros L taps)")
+    ax.plot(idx_all[keep], 10 * np.log10(energia_proc / np.median(energia_proc)), lw=1.5, label="Procesado")
+    if (~keep).any():
+        ax.plot(idx_all[~keep], e_all_db[~keep], "rx", ms=6, label=f"Descartados ({(~keep).sum()})")
+    if min_energy_db is not None:
+        ax.axhline(min_energy_db, color="r", ls="--", lw=1, label=f"Umbral {min_energy_db} dB")
+    ax.set_title("(d) Energía por canal relativa a la mediana")
     ax.set_xlabel("Índice de canal")
     ax.set_ylabel("Energía relativa [dB]")
     ax.legend()
@@ -372,6 +404,9 @@ if __name__ == "__main__":
     parser.add_argument("--L", type=int, default=200, help="Número de taps que se conservan")
     parser.add_argument("--taps-axis", type=int, default=0, choices=[0, 1],
                         help="Eje de los taps en el archivo de entrada (0 para los ch_*_time.npy)")
+    parser.add_argument("--min-energy-db", type=float, default=-8.0,
+                        help="Descarta canales con energía < mediana + este valor (dB). "
+                             "Usa un valor muy negativo (p. ej. -100) para no descartar ninguno")
     parser.add_argument("--no-plots", action="store_true", help="No generar las figuras de análisis")
     args = parser.parse_args()
 
@@ -380,6 +415,7 @@ if __name__ == "__main__":
         L=args.L,
         save_path=args.output,
         taps_axis=args.taps_axis,
+        min_energy_db=args.min_energy_db,
         verify_dir=None if args.no_plots else os.path.dirname(args.output),
     )
 
