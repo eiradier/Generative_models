@@ -3,3 +3,4 @@ checkpoints/
 eval_results/
 __pycache__/
 *.pyc
+logs/
