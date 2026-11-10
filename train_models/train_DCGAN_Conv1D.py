@@ -1,9 +1,12 @@
 import os
 try:
+    from train_models.normalization import prepare_training_data
+except ImportError:  # ejecutado desde dentro de train_models/
+    from normalization import prepare_training_data
+try:
     from train_models.quality import ChannelQuality
 except ImportError:  # ejecutado desde dentro de train_models/
     from quality import ChannelQuality
-import numpy as np
 import torch
 from torch import nn
 from torch.nn.utils import spectral_norm
@@ -75,7 +78,7 @@ def weights_init(m):
         if m.bias is not None:
             nn.init.zeros_(m.bias)
 
-def train_gan(G, D, loader, device, config):
+def train_gan(G, D, loader, device, config, data_orig, scaler):
     model_cfg = config["model"]
     paths = config["paths"]
     training = config["training"]
@@ -99,7 +102,7 @@ def train_gan(G, D, loader, device, config):
     optG = torch.optim.Adam(G.parameters(), lr=lr, betas=training["gan"]["betas"])
 
     # El mejor modelo se elige comparando canales generados con los reales (ver quality.py)
-    quality = ChannelQuality(loader.dataset.tensors[0])
+    quality = ChannelQuality(data_orig)
     best_score = float('inf')
     epochs_no_improve = 0
 
@@ -165,7 +168,7 @@ def train_gan(G, D, loader, device, config):
         g_loss_avg /= len(loader)
         d_loss_avg /= len(loader)
 
-        q = quality.evaluate_generator(G, z_dim, device)
+        q = quality.evaluate_generator(G, z_dim, device, transform=scaler.inverse)
         print(f"Epoch {epoch}/{epochs} | G_loss={g_loss_avg:.4f} | D_loss={d_loss_avg:.4f} | "
               f"score={q['score']:.3f} (PDP {q['pdp_mae_db']:.2f} dB, KS {q['rms_ks']:.3f})")
 
@@ -202,7 +205,7 @@ def train(config_path):
     torch.manual_seed(config["experiment"]["seed"])
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.makedirs(config["paths"]["save_dir"], exist_ok=True)
-    data = np.load(config["dataset"]["path"]).astype(np.float32)
+    data, data_orig, scaler = prepare_training_data(config, config["paths"]["save_dir"])
     dataset = TensorDataset(torch.from_numpy(data))
     loader = DataLoader(
         dataset,
@@ -223,4 +226,4 @@ def train(config_path):
     G.apply(weights_init)
     D.apply(weights_init)
 
-    train_gan(G, D, loader, device, config)
+    train_gan(G, D, loader, device, config, data_orig, scaler)

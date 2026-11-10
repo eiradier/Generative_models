@@ -2,10 +2,13 @@ import json
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 import math
 from torch.utils.data import DataLoader, TensorDataset
 import os
+try:
+    from train_models.normalization import prepare_training_data
+except ImportError:  # ejecutado desde dentro de train_models/
+    from normalization import prepare_training_data
 
 def load_config(path="dm_config.json"):
     with open(path, "r") as f:
@@ -162,7 +165,7 @@ def train(config_path):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.makedirs(config["paths"]["save_dir"], exist_ok=True)
     # cargar dataset
-    data_np = np.load(config["dataset"]["path"])
+    data_np, _, _ = prepare_training_data(config, config["paths"]["save_dir"])
     data = torch.from_numpy(data_np).float()
 
     loader = DataLoader(

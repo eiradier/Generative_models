@@ -48,13 +48,17 @@ class ChannelQuality:
         return {"score": pdp_mae_db + 10 * ks, "pdp_mae_db": pdp_mae_db, "rms_ks": ks}
 
     @torch.no_grad()
-    def evaluate_generator(self, G, z_dim, device, n=2000, seed=1234):
-        """Genera n canales con G (en modo eval) y devuelve la métrica. Restaura el modo de G."""
+    def evaluate_generator(self, G, z_dim, device, n=2000, seed=1234, transform=None):
+        """
+        Genera n canales con G (en modo eval) y devuelve la métrica. Restaura el modo de G.
+        transform: función que pasa la salida de G al espacio original (p. ej. TapScaler.inverse).
+        """
         was_training = G.training
         G.eval()
         g = torch.Generator(device=device)
         g.manual_seed(seed)  # mismo ruido en todas las épocas: comparación justa
         z = torch.randn(n, z_dim, device=device, generator=g)
-        out = self(G(z))
+        x = G(z)
+        out = self(transform(x) if transform is not None else x)
         G.train(was_training)
         return out

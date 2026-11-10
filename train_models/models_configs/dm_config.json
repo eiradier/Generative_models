@@ -5,7 +5,8 @@
   },
   "dataset": {
     "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy",
-    "type": "loopback"
+    "type": "loopback",
+    "normalization": "per_tap"
   },
   "model": {
     "time_emb_dim": 64
@@ -26,7 +27,7 @@
     "grad_clip": 1.0
   },
   "paths": {
-    "save_dir": "checkpoints/sodupe_180",
+    "save_dir": "checkpoints/sodupe_180_tapnorm",
     "best_model": "best_model.pth"
   }
 }

@@ -41,6 +41,7 @@ sys.path.insert(0, THIS_DIR)
 sys.path.insert(0, REPO_ROOT)
 
 from BER import ber_curve, ber_theory_awgn, ber_theory_rayleigh  # noqa: E402
+from train_models.normalization import TapScaler  # noqa: E402
 
 MODEL_LABELS = {"gan": "GAN", "dcgan": "DCGAN", "wgan": "WGAN", "ddpm": "DDPM", "ddim": "DDIM"}
 COLORS = {"gan": "red", "dcgan": "blue", "wgan": "purple", "ddpm": "green", "ddim": "orange"}
@@ -151,7 +152,7 @@ def generate_signals(model_type, model_cfg, num_samples, L, device, real_data, s
         unet = m.UNet1D(time_emb_dim=model_cfg.get("time_emb_dim", 64)).to(device)
         unet.load_state_dict(ckpt)
         unet.eval()
-        diffusion = m.Diffusion(unet, T=model_cfg["T"], data=real_data).to(device)
+        diffusion = m.Diffusion(unet, T=model_cfg["T"], data=real_data).to(device)  # data solo afecta a la loss
         sampler = m.DDIMSampler(diffusion, eta=model_cfg.get("eta", 0.0))
         torch.manual_seed(seed)  # el sampler usa el generador global
         for i in range(0, num_samples, batch_size):
@@ -161,7 +162,12 @@ def generate_signals(model_type, model_cfg, num_samples, L, device, real_data, s
     else:
         raise ValueError(model_type)
 
-    return np.concatenate(out, axis=0).astype(np.float32)
+    fake = np.concatenate(out, axis=0).astype(np.float32)
+    # Si el modelo se entrenó con normalización por tap, deshacerla (scaler.npz junto al checkpoint)
+    scaler = TapScaler.load(os.path.dirname(model_cfg["checkpoint"]))
+    if scaler is not None:
+        fake = scaler.inverse(fake)
+    return fake
 
 
 # Métricas

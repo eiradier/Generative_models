@@ -2,56 +2,79 @@
   "experiment": {
     "seed": 42
   },
-
   "data": {
     "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy",
     "signal_length": 200
   },
-
   "sampling": {
-    "bandwidth_hz": 8e6
+    "bandwidth_hz": 8000000.0
   },
-
   "models": {
     "gan": {
-      "checkpoint": "checkpoints/sodupe_180/GAN_Conv1D/best_model.pth"
+      "checkpoint": "checkpoints/sodupe_180_tapnorm/GAN_Conv1D/best_model.pth"
     },
     "dcgan": {
-      "checkpoint": "checkpoints/sodupe_180/DCGAN_Conv1D/model_best.pth"
+      "checkpoint": "checkpoints/sodupe_180_tapnorm/DCGAN_Conv1D/model_best.pth"
     },
     "wgan": {
-      "checkpoint": "checkpoints/sodupe_180/WGAN_Conv1D/best_model.pth"
+      "checkpoint": "checkpoints/sodupe_180_tapnorm/WGAN_Conv1D/best_model.pth"
     },
     "ddpm": {
-      "checkpoint": "checkpoints/sodupe_180/DDPM/best_model.pth",
+      "checkpoint": "checkpoints/sodupe_180_tapnorm/DDPM/best_model.pth",
       "T": 1000,
       "time_emb_dim": 64
     },
     "ddim": {
-      "checkpoint": "checkpoints/sodupe_180/DDIM/best_model.pth",
+      "checkpoint": "checkpoints/sodupe_180_tapnorm/DDIM/best_model.pth",
       "T": 1000,
       "time_emb_dim": 64,
       "sampling_steps": 100,
       "eta": 0.0
     }
   },
-
   "evaluation": {
-    "models": ["gan", "dcgan", "wgan", "ddpm", "ddim"],
+    "models": [
+      "gan",
+      "dcgan",
+      "wgan",
+      "ddpm",
+      "ddim"
+    ],
     "num_samples": 3000,
     "batch_size": 500,
-    "coherence_thresholds": [0.9, 0.5]
+    "coherence_thresholds": [
+      0.9,
+      0.5
+    ]
   },
-
   "ber": {
     "enabled": true,
-    "modulations": ["QPSK", "16QAM"],
-    "snr_db": [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30],
+    "modulations": [
+      "QPSK",
+      "16QAM"
+    ],
+    "snr_db": [
+      0,
+      2,
+      4,
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      22,
+      24,
+      26,
+      28,
+      30
+    ],
     "nfft": null,
     "n_ofdm": 1
   },
-
   "paths": {
-    "save_dir": "eval_results/sodupe_180"
+    "save_dir": "eval_results/sodupe_180_tapnorm"
   }
 }

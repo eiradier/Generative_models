@@ -1,10 +1,12 @@
-import math
 import os
+try:
+    from train_models.normalization import prepare_training_data
+except ImportError:  # ejecutado desde dentro de train_models/
+    from normalization import prepare_training_data
 try:
     from train_models.quality import ChannelQuality
 except ImportError:  # ejecutado desde dentro de train_models/
     from quality import ChannelQuality
-import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
@@ -17,20 +19,23 @@ def load_config(path="gans_config.json"):
 
 # ----- GENERATOR ----- #
 class Generator(nn.Module):
+    """
+    3 sobremuestreos x2 desde L/8: la salida tiene exactamente L muestras (sin recorte).
+    La versión anterior generaba ceil(L/16)*16 = 208 muestras y recortaba a 200, lo que dejaba
+    un artefacto de borde en los últimos taps.
+    """
     def __init__(self, z_dim, L):
         super().__init__()
 
         self.L = int(L)
-        self.init_len = int(math.ceil(self.L / 16)) # 4 unsamplings
+        if self.L % 8 != 0:
+            raise ValueError("L debe ser múltiplo de 8")
+        self.init_len = self.L // 8
 
         self.fc = nn.Linear(z_dim, 256 * self.init_len)
         self.bn0 = nn.BatchNorm1d(256)
 
         self.net = nn.Sequential(
-            nn.ReLU(True),
-
-            nn.ConvTranspose1d(256, 256, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm1d(256),
             nn.ReLU(True),
 
             nn.ConvTranspose1d(256, 128, kernel_size=4, stride=2, padding=1),
@@ -45,6 +50,10 @@ class Generator(nn.Module):
             nn.BatchNorm1d(32),
             nn.ReLU(True),
 
+            nn.Conv1d(32, 32, kernel_size=3, padding=1),
+            nn.BatchNorm1d(32),
+            nn.ReLU(True),
+
             nn.Conv1d(32, 2, kernel_size=3, padding=1),
             nn.Tanh()
         )
@@ -53,11 +62,7 @@ class Generator(nn.Module):
         x = self.fc(z)
         x = x.view(z.size(0), 256, self.init_len)
         x = self.bn0(x)
-        x = self.net(x)
-        # energy = torch.sqrt(torch.sum(x ** 2, dim=2, keepdim=True))
-        # x = x / (energy + 1e-12)
-        x = x[:, :, :self.L]
-        return x
+        return self.net(x)
 
 # ----- DISCRIMINATOR Conv1D ----- #
 class Discriminator(nn.Module):
@@ -134,7 +139,7 @@ def psd_similarity(real, fake):
         fake_psd = torch.log(torch.abs(torch.fft.rfft(fake, dim=-1)) ** 2 + 1e-8).mean(dim=0)
         return F.mse_loss(fake_psd, real_psd).item()
 
-def train_gan(G, C, loader, device, config, resume=None):
+def train_gan(G, C, loader, device, config, data_orig, scaler, resume=None):
     # El critic no clasifica, asigna una "energía" o score real-valued
     # Objetivo: aproximar la distancia entre distribuciones (Wasserstein)
     training = config["training"]
@@ -143,7 +148,7 @@ def train_gan(G, C, loader, device, config, resume=None):
 
     os.makedirs(paths["save_dir"], exist_ok=True)
 
-    lr = training["lr"]
+    lr = training["wgan"].get("lr", training["lr"])
     epochs = training["epochs"]
     n_critic = training["wgan"]["n_critic"]
     λ_gp = training["wgan"]["lambda_gp"]
@@ -157,7 +162,7 @@ def train_gan(G, C, loader, device, config, resume=None):
     optG = torch.optim.Adam(G.parameters(), lr=lr, betas=betas)
 
     # El mejor modelo se elige comparando canales generados con los reales (ver quality.py)
-    quality = ChannelQuality(loader.dataset.tensors[0])
+    quality = ChannelQuality(data_orig)
     start_epoch, best_score, epochs_no_improve = 1, float("inf"), 0
 
     # Reanudación desde last.pth (estado completo al final de la última época)
@@ -245,7 +250,7 @@ def train_gan(G, C, loader, device, config, resume=None):
         w_dist_epoch /= len(loader)
         psd_score_epoch /= len(loader)
 
-        q = quality.evaluate_generator(G, model_cfg["z_dim"], device)
+        q = quality.evaluate_generator(G, model_cfg["z_dim"], device, transform=scaler.inverse)
         print(f"Epoch {epoch}/{epochs} | "
               f"W_dist={w_dist_epoch:.4f} | "
               f"PSD_score={psd_score_epoch:.4f} | "
@@ -286,7 +291,7 @@ def train(config_path):
     config["paths"]["save_dir"] = os.path.join(config["paths"]["save_dir"], "WGAN_Conv1D")
     torch.manual_seed(config["experiment"]["seed"])
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    data = np.load(config["dataset"]["path"]).astype(np.float32)
+    data, data_orig, scaler = prepare_training_data(config, config["paths"]["save_dir"])
     dataset = TensorDataset(torch.from_numpy(data))
     loader = DataLoader(
         dataset,
@@ -318,4 +323,4 @@ def train(config_path):
         G.apply(weights_init)
         C.apply(weights_init)
 
-    train_gan(G, C, loader, device, config, resume=resume)
+    train_gan(G, C, loader, device, config, data_orig, scaler, resume=resume)
