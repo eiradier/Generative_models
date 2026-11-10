@@ -1,0 +1,47 @@
+{
+  "experiment": {
+    "seed": 42
+  },
+
+  "data": {
+    "path": "data/datos_loopback/new_ch_time_worst.npy",
+    "signal_length": 200
+  },
+
+  "models": {
+    "gan": {
+      "z_dim": 64
+    },
+
+    "dcgan": {
+      "z_dim": 128
+    },
+
+    "wgan": {
+      "z_dim": 128
+    },
+
+    "ddpm": {
+      "T": 500,
+      "time_emb_dim": 64
+    },
+
+    "ddim": {
+      "T": 1000,
+      "time_emb_dim": 64,
+      "sampling_steps": 100,
+      "eta": 0.0
+    }
+  },
+
+  "evaluation": {
+    "num_samples": 3000,
+    "delta_tau": 1e-8
+  },
+
+  "paths": {
+    "eval": {
+      "base_dir": "eval_results/datos_loopback/DDIM_sweep_2"
+    }
+  }
+}

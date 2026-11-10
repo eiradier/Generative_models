@@ -1,0 +1,40 @@
+{
+  "experiment": {
+    "name": "conv1d_wgan",
+    "seed": 42,
+    "model_type": "wgan"
+  },
+
+  "dataset": {
+    "path": "data/datos_loopback/new_ch_time_worst.npy"
+  },
+
+  "model": {
+    "z_dim": 64,
+    "signal_length": 200
+  },
+
+  "training": {
+    "epochs": 300,
+    "batch_size": 64,
+    "lr": 0.00005,
+
+    "gan": {
+      "betas": [0.5, 0.999]
+    },
+
+    "wgan": {
+      "betas": [0.0, 0.9],
+      "n_critic": 5,
+      "lambda_gp": 10.0,
+      "lambda_spec": 0.1
+    },
+    "patience": 50,
+    "min_delta": 0.0001
+  },
+
+  "paths": {
+    "save_dir": "checkpoints/datos_loopback/WGAN_Conv1D",
+    "best_model": "best_model.pth"
+  }
+}
