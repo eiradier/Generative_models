@@ -1,4 +1,8 @@
 import os
+try:
+    from train_models.quality import ChannelQuality
+except ImportError:  # ejecutado desde dentro de train_models/
+    from quality import ChannelQuality
 import numpy as np
 import torch
 from torch import nn
@@ -90,8 +94,9 @@ def train_gan(G, D, loader, device, config):
     optD = torch.optim.Adam(D.parameters(), lr=lr, betas=betas)
     optG = torch.optim.Adam(G.parameters(), lr=lr, betas=betas)
 
-    # Mejor pérdida del generador (para guardar mejor modelo)
-    best_g_loss = float("inf")
+    # El mejor modelo se elige comparando canales generados con los reales (ver quality.py)
+    quality = ChannelQuality(loader.dataset.tensors[0])
+    best_score = float("inf")
     epochs_no_improve = 0
 
     ### Bucle del ENTRENAMIENTO principal ###
@@ -148,14 +153,16 @@ def train_gan(G, D, loader, device, config):
         g_loss_epoch /= len(loader)
         d_loss_epoch /= len(loader)
 
+        q = quality.evaluate_generator(G, z_dim, device)
         print(
             f"Epoch [{epoch}/{epochs}] "
-            f"G_loss: {g_loss_epoch:.4f} | D_loss: {d_loss_epoch:.4f}"
+            f"G_loss: {g_loss_epoch:.4f} | D_loss: {d_loss_epoch:.4f} | "
+            f"score: {q['score']:.3f} (PDP {q['pdp_mae_db']:.2f} dB, KS {q['rms_ks']:.3f})"
         )
 
-        # Guardar mejor modelo (según pérdida del generador)
-        if g_loss_epoch < best_g_loss - min_delta:
-            best_g_loss = g_loss_epoch
+        # Guardar mejor modelo (según la calidad de los canales generados)
+        if q["score"] < best_score - min_delta:
+            best_score = q["score"]
             epochs_no_improve = 0
 
             torch.save(
@@ -163,7 +170,8 @@ def train_gan(G, D, loader, device, config):
                     "G": G.state_dict(),
                     "D": D.state_dict(),
                     "epoch": epoch,
-                    "g_loss": best_g_loss
+                    "g_loss": g_loss_epoch,
+                    "score": best_score
                 },
                 os.path.join(paths["save_dir"], paths["best_model"]),
             )

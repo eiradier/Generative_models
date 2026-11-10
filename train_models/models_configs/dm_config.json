@@ -3,33 +3,28 @@
     "name": "loopback_diffusion",
     "seed": 42
   },
-
   "dataset": {
     "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy",
     "type": "loopback"
   },
-
   "model": {
     "time_emb_dim": 64
   },
-
   "diffusion": {
     "schedule": "cosine",
     "use_tap_weights": true,
     "T": 1000,
     "lambda_rms": 1.0
   },
-
   "training": {
     "epochs": 500,
     "batch_size": 64,
     "lr": 0.0002,
-    "patience": 80,
-    "min_delta": 0.000005,
+    "patience": 30,
+    "min_delta": 5e-06,
     "num_workers": 0,
     "grad_clip": 1.0
   },
-
   "paths": {
     "save_dir": "checkpoints/sodupe_180",
     "best_model": "best_model.pth"

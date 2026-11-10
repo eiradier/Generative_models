@@ -1,5 +1,9 @@
 import math
 import os
+try:
+    from train_models.quality import ChannelQuality
+except ImportError:  # ejecutado desde dentro de train_models/
+    from quality import ChannelQuality
 import numpy as np
 import torch
 from torch import nn
@@ -130,7 +134,7 @@ def psd_similarity(real, fake):
         fake_psd = torch.log(torch.abs(torch.fft.rfft(fake, dim=-1)) ** 2 + 1e-8).mean(dim=0)
         return F.mse_loss(fake_psd, real_psd).item()
 
-def train_gan(G, C, loader, device, config, start_epoch=1, best_psd_score=float("inf")):
+def train_gan(G, C, loader, device, config, start_epoch=1, best_score=float("inf")):
     # El critic no clasifica, asigna una "energía" o score real-valued
     # Objetivo: aproximar la distancia entre distribuciones (Wasserstein)
     training = config["training"]
@@ -152,6 +156,8 @@ def train_gan(G, C, loader, device, config, start_epoch=1, best_psd_score=float(
     optC = torch.optim.Adam(C.parameters(), lr=lr, betas=betas)
     optG = torch.optim.Adam(G.parameters(), lr=lr, betas=betas)
 
+    # El mejor modelo se elige comparando canales generados con los reales (ver quality.py)
+    quality = ChannelQuality(loader.dataset.tensors[0])
     epochs_no_improve = 0
 
     ### Bucle del ENTRENAMIENTO principal ###
@@ -223,25 +229,28 @@ def train_gan(G, C, loader, device, config, start_epoch=1, best_psd_score=float(
         w_dist_epoch /= len(loader)
         psd_score_epoch /= len(loader)
 
+        q = quality.evaluate_generator(G, model_cfg["z_dim"], device)
         print(f"Epoch {epoch}/{epochs} | "
               f"W_dist={w_dist_epoch:.4f} | "
               f"PSD_score={psd_score_epoch:.4f} | "
               f"C_loss={c_loss_epoch:.4f} | "
-              f"G_loss={g_loss_epoch:.4f}")
+              f"G_loss={g_loss_epoch:.4f} | "
+              f"score={q['score']:.3f} (PDP {q['pdp_mae_db']:.2f} dB, KS {q['rms_ks']:.3f})", flush=True)
 
-        if psd_score_epoch < best_psd_score - min_delta:
-            best_psd_score = psd_score_epoch
+        if q["score"] < best_score - min_delta:
+            best_score = q["score"]
             epochs_no_improve = 0
 
             torch.save({
                 'G': G.state_dict(),
                 'C': C.state_dict(),
                 'epoch': epoch,
-                'psd_score': best_psd_score,
+                'psd_score': psd_score_epoch,
+                'score': best_score,
                 'W_dist': w_dist_epoch
             }, os.path.join(paths["save_dir"], paths["best_model"]))
 
-            print(f" Nuevo mejor modelo (PSD_score={best_psd_score:.4f})")
+            print(f" Nuevo mejor modelo (score={best_score:.3f})")
 
         else:
             epochs_no_improve += 1
@@ -282,7 +291,7 @@ def train(config_path):
     )
 
     start_epoch = 1
-    best_psd_score = float("inf")
+    best_score = float("inf")
 
     if os.path.exists(best_model_path):
 
@@ -297,19 +306,16 @@ def train(config_path):
         C.load_state_dict(checkpoint["C"])
 
         start_epoch = checkpoint["epoch"] + 1
-        best_psd_score = checkpoint["psd_score"]
+        best_score = checkpoint.get("score", float("inf"))
 
         print(
             f"Reanudando desde epoch {checkpoint['epoch']} "
-            f"(PSD={best_psd_score:.6f})"
+            f"(score={best_score:.4f})"
         )
 
     else:
         G.apply(weights_init)
         C.apply(weights_init)
 
-    G.apply(weights_init)
-    C.apply(weights_init)
-
     train_gan(G, C, loader, device, config,
-              start_epoch=start_epoch, best_psd_score=best_psd_score)
+              start_epoch=start_epoch, best_score=best_score)
