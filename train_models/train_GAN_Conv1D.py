@@ -180,6 +180,8 @@ def train_gan(G, D, loader, device, config):
 
 def train(config_path):
     config = load_config(config_path)
+    # cada modelo guarda en su propia subcarpeta para no sobrescribir a los demás
+    config["paths"]["save_dir"] = os.path.join(config["paths"]["save_dir"], "GAN_Conv1D")
     torch.manual_seed(config["experiment"]["seed"])
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     data = np.load(config["dataset"]["path"]).astype(np.float32)

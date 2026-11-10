@@ -248,6 +248,8 @@ class DDIMSampler:
 
 def train(config_path):
     config = load_config(config_path)
+    # cada modelo guarda en su propia subcarpeta para no sobrescribir a los demás
+    config["paths"]["save_dir"] = os.path.join(config["paths"]["save_dir"], "DDIM")
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.makedirs(config["paths"]["save_dir"], exist_ok=True)

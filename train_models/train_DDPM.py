@@ -157,6 +157,8 @@ def train(config_path):
     Bucle principal de entrenamiento del DDPM.
     """
     config = load_config(config_path)
+    # cada modelo guarda en su propia subcarpeta para no sobrescribir a los demás
+    config["paths"]["save_dir"] = os.path.join(config["paths"]["save_dir"], "DDPM")
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.makedirs(config["paths"]["save_dir"], exist_ok=True)
     # cargar dataset

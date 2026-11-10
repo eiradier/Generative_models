@@ -34,7 +34,7 @@
   },
 
   "paths": {
-    "save_dir": "checkpoints/sodupe_180/WGAN_Conv1D",
+    "save_dir": "checkpoints/sodupe_180",
     "best_model": "best_model.pth"
   }
 }

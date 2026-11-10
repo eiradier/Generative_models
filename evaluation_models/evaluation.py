@@ -1,301 +1,65 @@
+"""
+Evaluación de los modelos generativos de canal (GAN, DCGAN, WGAN, DDPM, DDIM) frente a
+las medidas reales de loopback.
+
+Para cada modelo:
+  1. Genera `num_samples` canales con el checkpoint entrenado (o reutiliza los ya generados).
+  2. Calcula métricas frente al dataset real: PDP, retardo medio y RMS delay spread, distribución
+     de |h|, potencia media de la respuesta en frecuencia, función de correlación en frecuencia,
+     ancho de banda de coherencia y curvas de BER (QPSK/16QAM con ZF).
+Después genera las figuras comparativas (todos los modelos juntos, estilo artículo) y las tablas.
+
+Uso (desde la raíz del repositorio):
+    python evaluation_models/evaluation.py
+    python evaluation_models/evaluation.py --models ddim wgan --device cuda
+    python evaluation_models/evaluation.py --reuse-generated      # no vuelve a generar
+
+Resultados en paths.save_dir (evaluation_config.json):
+    generated/h_generated_<modelo>.npy   canales generados (N, 2, L)
+    metrics.pkl                          todas las métricas (arrays incluidos)
+    metrics_summary.txt                  tabla de métricas escalares
+    ber_table.txt                        BER por modulación y SNR
+    fig_*.pdf / fig_*.png                figuras
+"""
 import argparse
+import importlib
+import json
+import os
+import pickle
+import sys
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import os
-import matplotlib.pyplot as plt
-from scipy.stats import ttest_ind
-from scipy.stats import gaussian_kde
+from scipy.stats import gaussian_kde, ks_2samp, ttest_ind
 
-import json
-import importlib
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(THIS_DIR)
+sys.path.insert(0, THIS_DIR)
+sys.path.insert(0, REPO_ROOT)
 
-from BER import compute_ber
+from BER import ber_curve, ber_theory_awgn, ber_theory_rayleigh  # noqa: E402
 
-def load_config(path="config/evaluation_config.json"):
+MODEL_LABELS = {"gan": "GAN", "dcgan": "DCGAN", "wgan": "WGAN", "ddpm": "DDPM", "ddim": "DDIM"}
+COLORS = {"gan": "red", "dcgan": "blue", "wgan": "purple", "ddpm": "green", "ddim": "orange"}
+
+MODULES = {
+    "gan": "train_models.train_GAN_Conv1D",
+    "dcgan": "train_models.train_DCGAN_Conv1D",
+    "wgan": "train_models.train_WGAN",
+    "ddpm": "train_models.train_DDPM",
+    "ddim": "train_models.train_DDIM",
+}
+
+
+# Utilidades
+
+def load_config(path):
     with open(path, "r") as f:
         return json.load(f)
 
-def to_db(x, eps=1e-10):
-    return 10 * np.log10(np.maximum(x, eps))
-
-def mae(a, b):
-    return np.mean(np.abs(a - b))
-
-def load_model_bundle(model_type):
-    module_map = {
-        "gan": ("train_modelos.train_GAN_Conv1D", ["Generator"]),
-        "dcgan": ("train_modelos.train_DCGAN_Conv1D", ["Generator"]),
-        "wgan": ("train_modelos.train_WGAN", ["Generator"]),
-        "ddpm": ("train_modelos.train_DDPM", ["UNet1D", "DDPM"]),
-        "ddim": ("train_modelos.train_DDIM", ["UNet1D", "Diffusion", "DDIMSampler"]),
-    }
-
-    if model_type not in module_map:
-        raise ValueError(f"Modelo no soportado: {model_type}")
-
-    module_name, attrs = module_map[model_type]
-    m = importlib.import_module(module_name)
-
-    return {a: getattr(m, a) for a in attrs}
-
-def compute_pdp(signals):
-    power = np.abs(signals) ** 2
-    return np.mean(power, axis=0)
-
-def compute_energy(signals):
-    """Energía total de cada señal"""
-    return np.sum(np.abs(signals)**2, axis=1)
-
-def compute_std_per_tap(signals):
-    """Desviación estándar por tap (columnas)"""
-    return np.std(signals, axis=0)
-
-def compute_autocorrelation(signals):
-    """Autocorrelación promedio por señal"""
-    N, L = signals.shape
-    autocorrelation = np.zeros(L)
-    for s in signals:
-        s = s - np.mean(s)
-        ac = np.correlate(s, s, mode='full')
-        ac = ac[ac.size//2:] # solo la mitad positiva
-        autocorrelation += ac / (np.max(ac) + 1e-12)
-    return autocorrelation / N
-
-def compute_average_delay(signals, delta_tau=1.0):
-    """
-    Average delay por señal y luego promedio global.
-    """
-    N, L = signals.shape
-    delays = np.arange(L) * delta_tau
-    avg_delays = []
-    for s in signals:
-        power = np.abs(s) ** 2
-        total_power = np.sum(power) + 1e-12
-        mean_delay = np.sum(delays * power) / total_power
-        avg_delays.append(mean_delay)
-
-    avg_delays = np.array(avg_delays)
-    return np.mean(avg_delays), avg_delays
-
-def compute_rms_delay_spread(signals, delta_tau=1.0):
-    """
-    RMS delay spread por señal y luego promedio global.
-    """
-    N, L = signals.shape
-    delays = np.arange(L) * delta_tau
-    rms_values = []
-    for s in signals:
-        power = np.abs(s) ** 2
-        total_power = np.sum(power) + 1e-12
-        mean_delay = np.sum(delays * power) / total_power
-        rms = np.sqrt(np.sum(power * (delays - mean_delay) ** 2) / total_power)
-        rms_values.append(rms)
-
-    rms_values = np.array(rms_values)
-    return np.mean(rms_values), rms_values
-
-def compute_histogram(signals, bins=50, range=(-1,1)):
-    """Histograma normalizado de magnitudes |h[n]|"""
-    mags = np.abs(signals).flatten()
-    hist, edges = np.histogram(mags, bins=bins, range=range, density=True)
-    return hist, edges[:-1]
-
-def compute_psd(signals):
-    """PSD promedio de las señales"""
-    psd = np.abs(np.fft.rfft(signals, axis=-1)) ** 2
-    psd_mean = psd.mean(axis=0)
-
-    freqs = np.fft.rfftfreq(signals.shape[-1], d=1.0)
-    return psd_mean, freqs
-
-def evaluate_metrics(real, fake, delta_tau=1.0):
-    m = {}
-
-    # PDP
-    m["pdp_real"] = compute_pdp(real)
-    m["pdp_fake"] = compute_pdp(fake)
-
-    m["pdp_mae"] = mae(m["pdp_real"], m["pdp_fake"])
-
-    m["pdp_real_db"] = to_db(m["pdp_real"])
-    m["pdp_fake_db"] = to_db(m["pdp_fake"])
-
-    mask = m["pdp_real"] > 1e-6
-    m["pdp_mae_db"] = np.mean(
-        np.abs(m["pdp_real_db"][mask] - m["pdp_fake_db"][mask])
-    )
-
-    # Delay
-    m["avg_real"], m["avg_real_all"] = compute_average_delay(real, delta_tau)
-    m["avg_fake"], m["avg_fake_all"] = compute_average_delay(fake, delta_tau)
-
-    m["avg_delay_mae"] = abs(m["avg_real"] - m["avg_fake"])
-    m["avg_delay_mae_ns"] = m["avg_delay_mae"] * 1e9
-
-    m["rms_real"], m["rms_real_all"] = compute_rms_delay_spread(real, delta_tau)
-    m["rms_fake"], m["rms_fake_all"] = compute_rms_delay_spread(fake, delta_tau)
-
-    m["rms_mae"] = abs(m["rms_real"] - m["rms_fake"])
-    m["rms_mae_ns"] = m["rms_mae"] * 1e9
-
-    # tests
-    m["rms_t_stat"], m["rms_t_pvalue"] = ttest_ind(
-        m["rms_real_all"], m["rms_fake_all"], equal_var=False
-    )
-
-    m["avg_t_stat"], m["avg_t_pvalue"] = ttest_ind(
-        m["avg_real_all"], m["avg_fake_all"], equal_var=False
-    )
-
-    # STD
-    m["std_real"] = compute_std_per_tap(real)
-    m["std_fake"] = compute_std_per_tap(fake)
-    m["std_mae"] = mae(m["std_real"], m["std_fake"])
-
-    # autocorr
-    m["autocorr_real"] = compute_autocorrelation(real)
-    m["autocorr_fake"] = compute_autocorrelation(fake)
-    m["autocorr_mae"] = mae(m["autocorr_real"], m["autocorr_fake"])
-
-    # hist
-    m["hist_real"], m["bins_real"] = compute_histogram(real)
-    m["hist_fake"], m["bins_fake"] = compute_histogram(fake)
-
-    # PSD
-    m["psd_real"], m["freqs"] = compute_psd(real)
-    m["psd_fake"], _ = compute_psd(fake)
-
-    m["psd_mae"] = mae(m["psd_real"], m["psd_fake"])
-
-    m["psd_real_db"] = to_db(m["psd_real"])
-    m["psd_fake_db"] = to_db(m["psd_fake"])
-    m["psd_mae_db"] = mae(m["psd_real_db"], m["psd_fake_db"])
-
-    return m
-
-def generate_signals(config, model_type, model_checkpoint, num_samples,
-                     device, model_bundle, seed):
-    """
-    Genera señales sintéticas de canal utilizando un modelo ya entrenado,
-    sin alterar los pesos ni la distribución aprendida.
-    Para obtener señales falsas comparables con las reales.
-    Return:
-    array (num_samples, L) con las señales generadas (normalizadas en [-1,1]).
-    """
-    L = config["data"]["signal_length"]
-    z_dim = config["models"][model_type].get("z_dim", None)
-    dm_steps = config["models"][model_type].get("T", 1000)
-    g = torch.Generator(device=device)
-    g.manual_seed(seed)
-
-    if model_type == 'gan':
-        checkpoint = torch.load(model_checkpoint, map_location=device)
-        Generator = model_bundle["Generator"]
-        G = Generator(z_dim=z_dim, L=L).to(device)
-        G.load_state_dict(checkpoint["G"])
-        G.eval()
-
-        with torch.no_grad():
-            z = torch.randn(num_samples, z_dim, device=device, generator=g)
-            fake = G(z).cpu().numpy()
-
-    # DCGAN: Generación directa a partir de ruido latente z
-    elif model_type == 'dcgan':
-        # cargar checkpoint y reconstruir el generador
-        checkpoint = torch.load(model_checkpoint, map_location=device)
-        Generator = model_bundle["Generator"]
-        G = Generator(z_dim=z_dim, L=L).to(device)
-        G.load_state_dict(checkpoint['G'])
-        G.eval()
-
-        # Muestreo directo: x = G(z)
-        with torch.no_grad():
-            z = torch.randn(num_samples, z_dim, device=device, generator=g)
-            fake = G(z).squeeze(1).cpu().numpy()
-
-    # WGAN-GP
-    elif model_type == 'wgan':
-        checkpoint = torch.load(model_checkpoint, map_location=device)
-        Generator = model_bundle["Generator"]
-        G = Generator(z_dim=z_dim, L=L).to(device)
-        G.load_state_dict(checkpoint['G'])
-        G.eval()
-
-        with torch.no_grad():
-            z = torch.randn(num_samples, z_dim, device=device, generator=g)
-            fake = G(z).cpu().numpy()
-
-    # DDPM: generación mediante proceso inverso de difusión
-    elif model_type == 'ddpm':
-        # cargar U-Net entrenada
-        UNet1D = model_bundle["UNet1D"]
-        DDPM = model_bundle["DDPM"]
-        checkpoint = torch.load(model_checkpoint, map_location=device)
-        unet = UNet1D(time_emb_dim=config["models"]["ddpm"]["time_emb_dim"]).to(device)
-        unet.load_state_dict(checkpoint)
-
-        # reconstruir DDPM con el mismo número de pasos T
-        ddpm = DDPM(unet, T=dm_steps).to(device)
-        ddpm.model.eval()
-
-        with torch.no_grad():
-            # Inicialización desde ruido gaussiano puro
-            x = torch.randn(num_samples, 2, L, device=device, generator=g)
-
-            # Proceso inverso de difusión: eliminar ruido paso a paso
-            # desde t=T-1 hasta t=0
-            for t in reversed(range(ddpm.T)):
-                t_batch = torch.full((num_samples,), t, device=device, dtype=torch.long)
-                noise_pred = ddpm.model(x, t_batch)
-
-                beta = ddpm.betas[t]
-                if t > 0:
-                    z = torch.randn_like(x, generator=g)
-                else:
-                    z = torch.zeros_like(x)
-
-                # ecuación de muestreo DDPM (simplificada)
-                x = (
-                        (1 / torch.sqrt(1 - beta)) *
-                        (x - beta / torch.sqrt(1 - ddpm.alphas_cumprod[t]) * noise_pred)
-                        + torch.sqrt(beta) * z
-                )
-            # guardar señal final x_0
-            x0 = x
-            x0 = torch.clamp(x0, -1, 1)
-            fake = x0.cpu().numpy()
-
-    elif model_type == 'ddim':
-        UNet1D = model_bundle["UNet1D"]
-        Diffusion = model_bundle["Diffusion"]
-        DDIMSampler = model_bundle["DDIMSampler"]
-        checkpoint = torch.load(model_checkpoint, map_location=device)
-
-        unet = UNet1D(
-            time_emb_dim=config["models"]["ddim"]["time_emb_dim"]
-        ).to(device)
-
-        unet.load_state_dict(checkpoint)
-        unet.eval()
-
-        data = np.load(config["data"]["path"]).astype(np.float32)
-        diffusion = Diffusion(unet, T=dm_steps, data=data).to(device)
-
-        sampler = DDIMSampler(
-            diffusion,
-            eta=config["models"]["ddim"]["eta"],
-        )
-
-        with torch.no_grad():
-            return sampler.sample(
-                shape=(num_samples, 2, L),
-                device=device,
-                steps=config["models"]["ddim"]["sampling_steps"]
-            ).cpu().numpy()
-    else:
-        raise ValueError(model_type)
-
-    return fake
 
 def set_seed(seed):
     import random
@@ -303,447 +67,513 @@ def set_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def save_generated_dataset(fake, args, config):
-    out_dir = os.path.join(args.save_dir, "dataset_generado")
-    os.makedirs(out_dir, exist_ok=True)
 
-    np.save(
-        os.path.join(out_dir, "h_generated.npy"),
-        fake.astype(np.float32)
-    )
+def to_db(x, eps=1e-12):
+    return 10 * np.log10(np.maximum(x, eps))
 
-    with open(os.path.join(out_dir, "info.txt"), "w") as f:
-        f.write(f"model_type: {args.model_type}\n")
-        f.write(f"checkpoint: {args.model}\n")
-        f.write(f"samples: {args.num_eval}\n")
-        f.write(f"signal_length: {fake.shape[-1]}\n")
 
-def main(args, config):
-    seed = config["experiment"]["seed"]
-    set_seed(seed)
+def mae(a, b):
+    return float(np.mean(np.abs(a - b)))
 
-    print("\n=== Cargando datos ===")
-    real_eval = load_real_data(args.data, args.num_eval, seed)
-    print("Dataset cargado:", real_eval.shape)
 
-    print(f"\n=== Generando señales con {args.model_type.upper()} ===")
-    model_bundle = load_model_bundle(args.model_type)
+def mse(a, b):
+    return float(np.mean(np.abs(a - b) ** 2))
 
-    fake_eval = generate_signals(
-        config=config,
-        model_type=args.model_type,
-        model_checkpoint=args.model,
-        num_samples=args.num_eval,
-        device=args.device,
-        model_bundle=model_bundle,
-        seed=seed
-    )
 
-    print("Señales generadas:", fake_eval.shape)
-    save_generated_dataset(fake_eval, args, config)
+def to_complex(data):
+    """(N, 2, L) [real, imag] -> (N, L) complejo."""
+    return data[:, 0, :].astype(np.float64) + 1j * data[:, 1, :].astype(np.float64)
 
-    # convertir a canal complejo
-    h_real = real_eval[:, 0, :] + 1j*real_eval[:, 1, :]
-    h_fake = fake_eval[:, 0, :] + 1j*fake_eval[:, 1, :]
 
-    N, L = h_real.shape
-    num_symbols = N * L
-    num_bits = num_symbols * 2  # QPSK
+def repo_path(p):
+    """Rutas relativas de la configuración -> relativas a la raíz del repositorio."""
+    return p if os.path.isabs(p) else os.path.join(REPO_ROOT, p)
 
-    bits = np.random.randint(0, 2, num_bits)
 
-    # BER
-    ber_real = compute_ber(h_real, bits, mod_type="QPSK")
-    ber_fake = compute_ber(h_fake, bits, mod_type="QPSK")
+def sampling_period(config):
+    """Periodo de muestreo de los taps. DVB-T2: fs = 8/7 * BW (8 MHz -> 109.375 ns)."""
+    s = config.get("sampling", {})
+    fs = s.get("fs_hz") or 8.0 / 7.0 * s.get("bandwidth_hz", 8e6)
+    return 1.0 / fs
 
-    print("\n--- BER ---")
-    print(f"BER real: {ber_real:.6f}")
-    print(f"BER fake: {ber_fake:.6f}")
-    print(f"BER diff: {abs(ber_real - ber_fake):.6f}")
 
-    real_mag, fake_mag = to_magnitude(real_eval, fake_eval)
+# Generación de canales
 
-    metrics = evaluate_metrics(real_mag, fake_mag, delta_tau=args.delta_tau)
-    print_metrics(metrics)
-    print_physical_metrics(metrics)
-    save_metrics(args, metrics)
-    write_metrics_file(args, metrics, ber_real, ber_fake)
-    plot_results(args, metrics, real_mag, fake_mag)
+def _load_checkpoint(path, device):
+    return torch.load(path, map_location=device, weights_only=True)
 
-    return metrics
 
-def load_real_data(path, num_eval, seed=42):
-    data = np.load(path).astype(np.float32)
-    rng = np.random.RandomState(seed)
-    idx = rng.choice(len(data), num_eval, replace=False)
-    return data[idx]
+@torch.no_grad()
+def generate_signals(model_type, model_cfg, num_samples, L, device, real_data, seed, batch_size=500):
+    """
+    Genera `num_samples` canales con el modelo entrenado. Devuelve (num_samples, 2, L) float32.
+    El z_dim de las GAN se lee del propio checkpoint, para que no pueda quedar desalineado
+    con la configuración usada al entrenar.
+    """
+    m = importlib.import_module(MODULES[model_type])
+    ckpt = _load_checkpoint(model_cfg["checkpoint"], device)
+    g = torch.Generator(device=device)
+    g.manual_seed(seed)
+    out = []
 
-def to_magnitude(real_eval, fake_eval):
-    real_complex = real_eval[:, 0, :] + 1j * real_eval[:, 1, :]
-    fake_complex = fake_eval[:, 0, :] + 1j * fake_eval[:, 1, :]
-    return np.abs(real_complex), np.abs(fake_complex)
+    if model_type in ("gan", "dcgan", "wgan"):
+        state = ckpt["G"]
+        z_dim = state["fc.weight"].shape[1]
+        G = m.Generator(z_dim=z_dim, L=L).to(device)
+        G.load_state_dict(state)
+        G.eval()
+        for i in range(0, num_samples, batch_size):
+            b = min(batch_size, num_samples - i)
+            z = torch.randn(b, z_dim, device=device, generator=g)
+            out.append(G(z).cpu().numpy())
 
-def print_metrics(metrics):
-    print("\n--- RESULTADOS ---")
-    for key in [
-        'pdp_mae', 'pdp_mae_db',
-        'avg_delay_mae_ns', 'rms_mae_ns',
-        'std_mae', 'autocorr_mae',
-        'psd_mae', 'psd_mae_db'
-    ]:
-        val = metrics[key]
+    elif model_type == "ddpm":
+        unet = m.UNet1D(time_emb_dim=model_cfg.get("time_emb_dim", 64)).to(device)
+        unet.load_state_dict(ckpt)
+        unet.eval()
+        ddpm = m.DDPM(unet, T=model_cfg["T"]).to(device)
+        for i in range(0, num_samples, batch_size):
+            b = min(batch_size, num_samples - i)
+            x = torch.randn(b, 2, L, device=device, generator=g)
+            for t in reversed(range(ddpm.T)):
+                t_batch = torch.full((b,), t, device=device, dtype=torch.long)
+                eps = ddpm.model(x, t_batch)
+                beta = ddpm.betas[t]
+                x = (x - beta / torch.sqrt(1 - ddpm.alphas_cumprod[t]) * eps) / torch.sqrt(1 - beta)
+                if t > 0:
+                    x = x + torch.sqrt(beta) * torch.randn(x.shape, device=device, generator=g)
+            out.append(torch.clamp(x, -1, 1).cpu().numpy())
 
-        if key in ['avg_delay_mae_ns', 'rms_mae_ns']:
-            print(f"{key}: {val:.3f} ns")
-        elif key == 'pdp_mae_db':
-            print(f"{key}: {val:.3f} dB")
-        elif key == 'psd_mae_db':
-            print(f"{key}: {val:.3f} dB/Hz")
-        else:
-            print(f"{key}: {val:.6f}")
+    elif model_type == "ddim":
+        unet = m.UNet1D(time_emb_dim=model_cfg.get("time_emb_dim", 64)).to(device)
+        unet.load_state_dict(ckpt)
+        unet.eval()
+        diffusion = m.Diffusion(unet, T=model_cfg["T"], data=real_data).to(device)
+        sampler = m.DDIMSampler(diffusion, eta=model_cfg.get("eta", 0.0))
+        torch.manual_seed(seed)  # el sampler usa el generador global
+        for i in range(0, num_samples, batch_size):
+            b = min(batch_size, num_samples - i)
+            out.append(sampler.sample(shape=(b, 2, L), device=device,
+                                      steps=model_cfg.get("sampling_steps", 100)).cpu().numpy())
+    else:
+        raise ValueError(model_type)
 
-def print_physical_metrics(metrics):
-    ns = 1e9
+    return np.concatenate(out, axis=0).astype(np.float32)
 
-    print("\n--- MÉTRICAS REALES ---")
-    print(f"Avg delay real: {metrics['avg_real'] * ns:.3f} ns")
-    print(f"RMS delay real: {metrics['rms_real'] * ns:.3f} ns")
-    print(f"Mean PSD real: {np.mean(metrics['psd_real_db']):.3f} dB/Hz")
 
-    print("\n--- MÉTRICAS GENERADAS ---")
-    print(f"Avg delay fake: {metrics['avg_fake'] * ns:.3f} ns")
-    print(f"RMS delay fake: {metrics['rms_fake'] * ns:.3f} ns")
-    print(f"Mean PSD fake: {np.mean(metrics['psd_fake_db']):.3f} dB/Hz")
+# Métricas
 
-def save_metrics(args, metrics):
-    os.makedirs(args.save_dir, exist_ok=True)
-    np.save(os.path.join(args.save_dir, "metrics.npy"), metrics)
+def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0):
+    """Estadísticas de un conjunto de canales complejos h (N, L)."""
+    N, L = h.shape
+    p = np.abs(h) ** 2
+    energy = p.sum(axis=1)
+    tau = np.arange(L) * dt
 
-def write_metrics_file(args, metrics, ber_real=None, ber_fake=None):
-    scalar_keys = [
-        'pdp_mae', 'pdp_mae_db',
-        'avg_delay_mae_ns', 'rms_mae_ns',
-        'std_mae', 'autocorr_mae',
-        'psd_mae', 'psd_mae_db'
+    mean_delay = (p * tau).sum(axis=1) / (energy + 1e-30)
+    rms_delay = np.sqrt((p * (tau[None] - mean_delay[:, None]) ** 2).sum(axis=1) / (energy + 1e-30))
+
+    pdp = p.mean(axis=0)
+
+    # Respuesta en frecuencia: potencia media por subportadora
+    H = np.fft.fft(h, axis=1)
+    freq_power = np.fft.fftshift((np.abs(H) ** 2).mean(axis=0))
+
+    # Función de correlación en frecuencia R(Δk) = E{H[k+Δk] H*[k]} (circular, promediada en k
+    # y en realizaciones). Por la relación de Wiener-Khinchin es la DFT del PDP medio.
+    R = np.fft.fft(pdp)
+    freq_corr = np.abs(R[: L // 2 + 1]) / (np.abs(R[0]) + 1e-30)
+
+    mag = np.abs(h).ravel()
+    mag_db = 20 * np.log10(mag + 1e-12)
+    mag_sorted = np.sort(mag)
+    mag_db_sorted = np.sort(mag_db)
+    cdf = np.searchsorted(mag_sorted, mag_grid, side="right") / mag.size
+    cdf_db = np.searchsorted(mag_db_sorted, mag_db_grid, side="right") / mag.size
+
+    rng = np.random.default_rng(seed)
+    sub = rng.choice(mag.size, min(kde_points, mag.size), replace=False)
+    kde = gaussian_kde(mag[sub])(mag_grid)
+    kde_db = gaussian_kde(mag_db[sub])(mag_db_grid)
+
+    return {
+        "pdp": pdp, "pdp_db": to_db(pdp),
+        "energy": energy,
+        "mean_delay_all": mean_delay, "rms_delay_all": rms_delay,
+        "mean_delay": float(mean_delay.mean()), "rms_delay": float(rms_delay.mean()),
+        "std_tap": np.abs(h).std(axis=0),
+        "freq_power": freq_power,
+        "freq_corr": freq_corr,
+        "mag_cdf": cdf, "mag_cdf_db": cdf_db,
+        "mag_kde": kde, "mag_kde_db": kde_db,
+        "_mag_sub": mag[sub],
+    }
+
+
+def coherence_bandwidth(freq_corr, df, threshold):
+    """Primer desplazamiento en frecuencia donde |R| cae por debajo del umbral (interpolado). Hz."""
+    below = np.where(freq_corr < threshold)[0]
+    if len(below) == 0:
+        return np.nan  # no cae por debajo del umbral en el rango disponible
+    i = below[0]
+    if i == 0:
+        return 0.0
+    y1, y2 = freq_corr[i - 1], freq_corr[i]
+    return float((i - 1 + (y1 - threshold) / (y1 - y2 + 1e-30)) * df)
+
+
+def compare(real, fake, df, thresholds):
+    """Métricas escalares de un modelo frente al real."""
+    m = {}
+    mask = real["pdp"] > real["pdp"].max() * 1e-6  # taps por encima de -60 dB
+    m["pdp_mae"] = mae(real["pdp"], fake["pdp"])
+    m["pdp_mse"] = mse(real["pdp"], fake["pdp"])
+    m["pdp_mae_db"] = mae(real["pdp_db"][mask], fake["pdp_db"][mask])
+
+    m["energy_ratio_db"] = float(10 * np.log10(fake["energy"].mean() / real["energy"].mean()))
+
+    for k in ("mean_delay", "rms_delay"):
+        m[f"{k}_real_ns"] = real[k] * 1e9
+        m[f"{k}_fake_ns"] = fake[k] * 1e9
+        m[f"{k}_mae_ns"] = abs(real[k] - fake[k]) * 1e9
+        m[f"{k}_ttest_p"] = float(ttest_ind(real[f"{k}_all"], fake[f"{k}_all"], equal_var=False).pvalue)
+        ks = ks_2samp(real[f"{k}_all"], fake[f"{k}_all"])
+        m[f"{k}_ks"], m[f"{k}_ks_p"] = float(ks.statistic), float(ks.pvalue)
+
+    m["std_tap_mae"] = mae(real["std_tap"], fake["std_tap"])
+    m["mag_ks"] = float(ks_2samp(real["_mag_sub"], fake["_mag_sub"]).statistic)
+
+    ref = real["freq_power"].max()
+    m["freq_power_mae_db"] = mae(to_db(real["freq_power"] / ref), to_db(fake["freq_power"] / ref))
+    m["freq_corr_mae"] = mae(real["freq_corr"], fake["freq_corr"])
+    for thr in thresholds:
+        bc_r = coherence_bandwidth(real["freq_corr"], df, thr)
+        bc_f = coherence_bandwidth(fake["freq_corr"], df, thr)
+        m[f"bc{int(thr * 100)}_real_mhz"] = bc_r / 1e6
+        m[f"bc{int(thr * 100)}_fake_mhz"] = bc_f / 1e6
+        m[f"bc{int(thr * 100)}_err_mhz"] = abs(bc_r - bc_f) / 1e6
+    return m
+
+
+# Figuras
+
+def _style(ax, xlabel, ylabel, legend=True, loc="best"):
+    ax.set_xlabel(xlabel, fontsize=12, fontweight="bold")
+    ax.set_ylabel(ylabel, fontsize=12, fontweight="bold")
+    ax.grid(True, linestyle=":", alpha=0.6)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.tick_params(axis="both", which="major", labelsize=10)
+    if legend:
+        ax.legend(frameon=True, facecolor="white", edgecolor="none", fontsize=10, loc=loc)
+
+
+def _save(fig, save_dir, name):
+    fig.tight_layout()
+    for ext in ("pdf", "png"):
+        fig.savefig(os.path.join(save_dir, f"{name}.{ext}"), bbox_inches="tight", dpi=200)
+    plt.close(fig)
+
+
+def _plot_curves(ax, x, real_y, fakes, key, transform=lambda v: v):
+    for name, st in fakes.items():
+        ax.plot(x, transform(st[key]), label=MODEL_LABELS[name], color=COLORS[name], lw=1.3, ls="--")
+    ax.plot(x, transform(real_y), label="Real", color="black", lw=2.0)
+
+
+def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg, examples):
+    L = len(real["pdp"])
+    delay_us = np.arange(L) * dt * 1e6
+    fs = 1 / dt
+    df = fs / L
+
+    # PDP lineal y en dB
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _plot_curves(ax, delay_us, real["pdp"], fakes, "pdp")
+    _style(ax, r"Delay $\tau$ ($\mu$s)", "Power Delay Profile (linear)")
+    _save(fig, save_dir, "fig_pdp_linear")
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _plot_curves(ax, delay_us, real["pdp_db"], fakes, "pdp_db")
+    _style(ax, r"Delay $\tau$ ($\mu$s)", "Power Delay Profile (dB)")
+    _save(fig, save_dir, "fig_pdp_db")
+
+    # Distribución de |h|: KDE y CDF (lineal, con zoom) y CDF en dB
+    x, x_db = grids
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _plot_curves(ax, x, real["mag_kde"], fakes, "mag_kde")
+    _style(ax, r"Signal Magnitude $|h[n]|$", "Probability Density")
+    _save(fig, save_dir, "fig_kde_comparison")
+
+    fig, ax = plt.subplots(figsize=(9, 6))
+    _plot_curves(ax, x, real["mag_cdf"], fakes, "mag_cdf")
+    _style(ax, r"Signal Magnitude $|h[n]|$", r"$P(|h[n]| \leq x)$", loc="lower right")
+    axins = ax.inset_axes([0.3, 0.3, 0.40, 0.35])
+    for name, st in fakes.items():
+        axins.plot(x, st["mag_cdf"], color=COLORS[name], lw=1.1, ls="--")
+    axins.plot(x, real["mag_cdf"], color="black", lw=1.5)
+    axins.set_xlim(x[int(len(x) * 0.04)], x[int(len(x) * 0.12)])
+    axins.set_ylim(0.90, 1.02)
+    axins.grid(True, linestyle=":", alpha=0.6)
+    axins.tick_params(labelsize=9)
+    ax.indicate_inset_zoom(axins, edgecolor="gray", alpha=0.8)
+    _save(fig, save_dir, "fig_cdf_comparison")
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _plot_curves(ax, x_db, real["mag_cdf_db"], fakes, "mag_cdf_db")
+    _style(ax, r"Signal Magnitude $20\log_{10}|h[n]|$ (dB)", r"$P(|h[n]| \leq x)$", loc="upper left")
+    _save(fig, save_dir, "fig_cdf_comparison_db")
+
+    # Potencia media de la respuesta en frecuencia (referida al máximo del real)
+    f_mhz = np.fft.fftshift(np.fft.fftfreq(L, d=dt)) / 1e6
+    ref = real["freq_power"].max()
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _plot_curves(ax, f_mhz, real["freq_power"], fakes, "freq_power", transform=lambda v: to_db(v / ref))
+    _style(ax, "Frequency (MHz)", r"$E\{|H(f)|^2\}$ (dB)")
+    _save(fig, save_dir, "fig_freq_response_db")
+
+    # Correlación en frecuencia y ancho de banda de coherencia
+    lag_mhz = np.arange(L // 2 + 1) * df / 1e6
+    fig, ax = plt.subplots(figsize=(9, 5))
+    _plot_curves(ax, lag_mhz, real["freq_corr"], fakes, "freq_corr")
+    for thr in thresholds:
+        ax.axhline(thr, color="gray", lw=0.8, ls=":")
+    _style(ax, r"Frequency separation $\Delta f$ (MHz)", r"$|R_H(\Delta f)|$ (normalized)")
+    _save(fig, save_dir, "fig_frequency_correlation")
+
+    # Distribución del RMS delay spread y del retardo medio
+    for key, label, name in (("rms_delay_all", "RMS delay spread", "fig_rms_delay"),
+                             ("mean_delay_all", "Mean delay", "fig_mean_delay")):
+        allv = np.concatenate([real[key]] + [st[key] for st in fakes.values()]) * 1e9
+        xs = np.linspace(np.percentile(allv, 0.5), np.percentile(allv, 99.5), 400)
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        for n, st in fakes.items():
+            axes[0].plot(xs, gaussian_kde(st[key] * 1e9)(xs), color=COLORS[n], ls="--", lw=1.3,
+                         label=MODEL_LABELS[n])
+        axes[0].plot(xs, gaussian_kde(real[key] * 1e9)(xs), color="black", lw=2, label="Real")
+        _style(axes[0], f"{label} (ns)", "Probability Density")
+        names = ["Real"] + [MODEL_LABELS[n] for n in fakes]
+        axes[1].boxplot([real[key] * 1e9] + [st[key] * 1e9 for st in fakes.values()],
+                        tick_labels=names, showfliers=False)
+        _style(axes[1], "", f"{label} (ns)", legend=False)
+        _save(fig, save_dir, name)
+
+    # Curvas de BER
+    snr = np.array(ber_cfg["snr_db"], dtype=float)
+    for mod, res in ber_results.items():
+        fig, ax = plt.subplots(figsize=(9, 6))
+        ax.semilogy(snr, ber_theory_awgn(snr, mod), color="gray", lw=1, ls=":", label="AWGN (theory)")
+        ax.semilogy(snr, ber_theory_rayleigh(snr, mod), color="gray", lw=1, ls="-.",
+                    label="Rayleigh (theory)")
+        for n, b in res.items():
+            if n == "real" or n.startswith("_"):
+                continue
+            ax.semilogy(snr, np.where(b > 0, b, np.nan), color=COLORS[n], ls="--", marker="x", ms=5,
+                        lw=1.3, label=MODEL_LABELS[n])
+        ax.semilogy(snr, np.where(res["real"] > 0, res["real"], np.nan), color="black", marker="o",
+                    ms=5, lw=2, label="Real")
+        ax.set_ylim(max(1e-6, 0.5 / res["_n_bits"]), 1.0)
+        _style(ax, r"SNR $E_s/N_0$ (dB)", "BER")
+        ax.grid(True, which="both", linestyle=":", alpha=0.6)
+        _save(fig, save_dir, f"fig_ber_{mod.lower()}")
+
+    # Ejemplos de canales (|h| en dB), real vs cada modelo
+    real_ex, fake_ex = examples
+    for n, fk in fake_ex.items():
+        fig, axes = plt.subplots(2, 4, figsize=(16, 6), sharey=True)
+        for i, ax in enumerate(axes.ravel()):
+            src, lbl, col = (real_ex, "Real", "black") if i < 4 else (fk, MODEL_LABELS[n], COLORS[n])
+            ax.plot(delay_us, 20 * np.log10(np.abs(src[i % 4]) + 1e-12), color=col, lw=1)
+            ax.set_title(f"{lbl} #{i % 4 + 1}", fontsize=10)
+            ax.grid(True, linestyle=":", alpha=0.6)
+        for ax in axes[1]:
+            ax.set_xlabel(r"Delay $\tau$ ($\mu$s)")
+        for ax in axes[:, 0]:
+            ax.set_ylabel(r"$|h[n]|$ (dB)")
+        _save(fig, save_dir, f"examples_{n}")
+
+
+# Tablas
+
+def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds):
+    models = list(results.keys())
+    rows = [
+        ("PDP MAE (lin)", "pdp_mae", ".3e"), ("PDP MSE (lin)", "pdp_mse", ".3e"),
+        ("PDP MAE (dB)", "pdp_mae_db", ".3f"),
+        ("Energy fake/real (dB)", "energy_ratio_db", ".3f"),
+        ("Mean delay real (ns)", "mean_delay_real_ns", ".2f"),
+        ("Mean delay fake (ns)", "mean_delay_fake_ns", ".2f"),
+        ("Mean delay MAE (ns)", "mean_delay_mae_ns", ".2f"),
+        ("Mean delay KS", "mean_delay_ks", ".3f"),
+        ("Mean delay t-test p", "mean_delay_ttest_p", ".2e"),
+        ("RMS delay real (ns)", "rms_delay_real_ns", ".2f"),
+        ("RMS delay fake (ns)", "rms_delay_fake_ns", ".2f"),
+        ("RMS delay MAE (ns)", "rms_delay_mae_ns", ".2f"),
+        ("RMS delay KS", "rms_delay_ks", ".3f"),
+        ("RMS delay t-test p", "rms_delay_ttest_p", ".2e"),
+        ("Std per tap MAE", "std_tap_mae", ".3e"),
+        ("|h| KS distance", "mag_ks", ".3f"),
+        ("E|H(f)|^2 MAE (dB)", "freq_power_mae_db", ".3f"),
+        ("Freq. corr. MAE", "freq_corr_mae", ".4f"),
     ]
+    for thr in thresholds:
+        t = int(thr * 100)
+        rows += [(f"Bc{t} real (MHz)", f"bc{t}_real_mhz", ".4f"),
+                 (f"Bc{t} fake (MHz)", f"bc{t}_fake_mhz", ".4f"),
+                 (f"Bc{t} error (MHz)", f"bc{t}_err_mhz", ".4f")]
 
-    def significance(p):
-        return "STATISTICALLY SIMILAR" if p > 0.05 else "STATISTICALLY DIFFERENT"
+    for key in sorted({k for r in results.values() for k in r if k.startswith("ber_")}):
+        mod = key.split("_")[1]
+        rows.append((f"BER {mod} |dlog10|", key, ".3f"))
 
-    txt_path = os.path.join(args.save_dir, "metrics.txt")
+    w = 24
+    lines = ["===== EVALUACIÓN DE MODELOS GENERATIVOS =====", *cfg_info, ""]
+    lines.append(f"{'Metric':<{w}}" + "".join(f"{MODEL_LABELS[m]:>12}" for m in models))
+    lines.append("-" * (w + 12 * len(models)))
+    for label, key, fmt in rows:
+        lines.append(f"{label:<{w}}" + "".join(f"{results[m][key]:>12{fmt}}" for m in models))
+    lines += ["", "KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).",
+              "t-test p > 0.05: no hay diferencia significativa entre las medias."]
+    txt = "\n".join(lines)
+    with open(os.path.join(save_dir, "metrics_summary.txt"), "w", encoding="utf-8") as f:
+        f.write(txt + "\n")
+    print("\n" + txt)
 
-    with open(txt_path, "w") as f:
-        f.write("===== RESULTADOS EVALUACION =====\n")
-        f.write(f"Model type: {args.model_type}\n")
-        f.write(f"Checkpoint: {args.model}\n")
-        f.write(f"Num eval samples: {args.num_eval}\n")
-        f.write("=" * 50 + "\n\n")
-
-        f.write("---- METRICAS GLOBALES ----\n")
-        for k in scalar_keys:
-            if k in ['avg_delay_mae_ns', 'rms_mae_ns']:
-                f.write(f"{k}: {metrics[k]:.3f} ns\n")
-            elif k == 'pdp_mae_db':
-                f.write(f"{k}: {metrics[k]:.3f} dB\n")
-            elif k == 'psd_mae_db':
-                f.write(f"{k}: {metrics[k]:.3f} dB/Hz\n")
-            else:
-                f.write(f"{k}: {metrics[k]:.6f}\n")
-
-        f.write("\n---- STATISTICAL TESTS ----\n")
-        f.write(f"RMS t-test statistic: {metrics['rms_t_stat']:.6f}\n")
-        f.write(f"RMS t-test p_value: {metrics['rms_t_pvalue']:.3e}\n")
-        f.write(f"AVG delay t-test statistic: {metrics['avg_t_stat']:.6f}\n")
-        f.write(f"AVG delay t-test p_value: {metrics['avg_t_pvalue']:.3e}\n")
-
-        f.write("\n---- REAL CHANNEL STATS ----\n")
-        f.write(f"Avg delay real: {metrics['avg_real'] * 1e9:.3f} ns\n")
-        f.write(f"RMS delay real: {metrics['rms_real'] * 1e9:.3f} ns\n")
-        f.write(f"Mean PSD real: {np.mean(metrics['psd_real_db']):.3f} dB/Hz\n")
-
-        f.write("\n---- GENERATED CHANNEL STATS ----\n")
-        f.write(f"Avg delay fake: {metrics['avg_fake'] * 1e9:.3f} ns\n")
-        f.write(f"RMS delay fake: {metrics['rms_fake'] * 1e9:.3f} ns\n")
-        f.write(f"Mean PSD fake: {np.mean(metrics['psd_fake_db']):.3f} dB/Hz\n")
-
-        f.write("\n---- BER ----\n")
-        f.write(f"BER real: {ber_real:.6f}\n")
-        f.write(f"BER fake: {ber_fake:.6f}\n")
-        f.write(f"BER diff: {abs(ber_real - ber_fake):.6f}\n")
-
-        f.write("\n---- STATISTICAL INTERPRETATION ----\n")
-        f.write(f"RMS comparison: {significance(metrics['rms_t_pvalue'])}\n")
-        f.write(f"AVG delay comparison: {significance(metrics['avg_t_pvalue'])}\n")
-
-def plot_delay_distribution(args, metrics):
-    plt.figure(figsize=(8, 4))
-
-    plt.hist(
-        metrics["rms_real_all"] * 1e9,
-        bins=30,
-        alpha=0.6,
-        density=True,
-        label="Real"
-    )
-
-    plt.hist(
-        metrics["rms_fake_all"] * 1e9,
-        bins=30,
-        alpha=0.6,
-        density=True,
-        label="Generado"
-    )
-
-    plt.xlabel("RMS Delay Spread (ns)")
-    plt.ylabel("Density")
-    plt.title("Distribución RMS Delay Spread")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-
-    plt.savefig(
-        os.path.join(args.save_dir, "rms_distribution.png")
-    )
+    if ber_results:
+        snr = ber_cfg["snr_db"]
+        lines = []
+        for mod, res in ber_results.items():
+            names = ["real"] + [m for m in res if m not in ("real", "_n_bits")]
+            lines.append(f"===== BER {mod} (ZF, {res['_n_bits']} bits por punto) =====")
+            lines.append(f"{'SNR (dB)':<10}" + "".join(f"{(MODEL_LABELS.get(n, 'Real')):>12}" for n in names)
+                         + f"{'AWGN th.':>12}{'Rayl. th.':>12}")
+            for i, s in enumerate(snr):
+                lines.append(f"{s:<10g}" + "".join(f"{res[n][i]:>12.3e}" for n in names)
+                             + f"{ber_theory_awgn(s, mod):>12.3e}{ber_theory_rayleigh(s, mod):>12.3e}")
+            lines.append("")
+        txt = "\n".join(lines)
+        with open(os.path.join(save_dir, "ber_table.txt"), "w", encoding="utf-8") as f:
+            f.write(txt + "\n")
+        print("\n" + txt)
 
 
-def plot_boxplot_delay(args, metrics):
-    plt.figure(figsize=(6, 4))
+# Programa principal
 
-    plt.boxplot([
-        metrics["rms_real_all"] * 1e9,
-        metrics["rms_fake_all"] * 1e9
-    ],
-    tick_labels=["Real", "Generado"])
-
-    plt.ylabel("RMS Delay Spread (ns)")
-    plt.title("Boxplot RMS Delay Spread")
-    plt.grid(True, axis='y', alpha=0.3)
-    plt.tight_layout()
-
-    plt.savefig(
-        os.path.join(args.save_dir, "boxplot_rms.png")
-    )
-
-
-def plot_cdf(args, real_mag, fake_mag):
-    real_vals = real_mag.flatten()
-    fake_vals = fake_mag.flatten()
-
-    real_sorted = np.sort(real_vals)
-    fake_sorted = np.sort(fake_vals)
-
-    real_cdf = np.arange(len(real_sorted)) / len(real_sorted)
-    fake_cdf = np.arange(len(fake_sorted)) / len(fake_sorted)
-
-    plt.figure(figsize=(8, 4))
-
-    plt.plot(real_sorted, real_cdf, label="Real", linewidth=2)
-    plt.plot(fake_sorted, fake_cdf, label="Generado", linewidth=2, linestyle='--')
-    plt.grid(True, alpha=0.3)
-    plt.xlabel("|h[n]|")
-    plt.ylabel("CDF")
-    plt.title("CDF de magnitudes")
-
-    plt.legend()
-
-    plt.tight_layout()
-
-    plt.savefig(
-        os.path.join(args.save_dir, "cdf_magnitudes.png")
-    )
-
-
-def plot_kde(args, real_mag, fake_mag):
-    real_vals = real_mag.flatten()
-    fake_vals = fake_mag.flatten()
-
-    kde_real = gaussian_kde(real_vals)
-    kde_fake = gaussian_kde(fake_vals)
-
-    x = np.linspace(
-        0,
-        max(real_vals.max(), fake_vals.max()),
-        500
-    )
-
-    plt.figure(figsize=(8, 4))
-
-    plt.plot(x, kde_real(x), label="Real", linewidth=2)
-    plt.plot(x, kde_fake(x), label="Generado", linewidth=2, linestyle='--')
-    plt.grid(True, alpha=0.3)
-    plt.xlabel("|h[n]|")
-    plt.ylabel("Density")
-    plt.title("Kernel Density Estimation")
-
-    plt.legend()
-
-    plt.tight_layout()
-
-    plt.savefig(
-        os.path.join(args.save_dir, "kde_distribution.png")
-    )
-
-def plot_results(args, metrics, real_mag, fake_mag):
-    plt.figure(figsize=(8, 4))
-    delays = np.arange(len(metrics['pdp_real_db'])) * args.delta_tau * 1e9
-    stride = max(1, len(metrics['pdp_real_db']) // 15)
-
-    plt.plot(
-        delays,
-        metrics['pdp_real_db'],
-        label="Real",
-        linewidth=2,
-        marker='o',
-        markersize=4,
-        markevery=stride
-    )
-
-    plt.plot(
-        delays,
-        metrics['pdp_fake_db'],
-        label="Generado",
-        linewidth=2,
-        linestyle='--',
-        marker='x',
-        markersize=4,
-        markevery=stride
-    )
-    plt.grid(True, alpha=0.3)
-    plt.title("PDP (dB) Real vs Generado")
-    plt.xlabel("Delay (ns)")
-    plt.ylabel("Power (dB)")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(args.save_dir, "pdp.png"))
-
-    plt.figure(figsize=(8, 4))
-    plt.bar(metrics['bins_real'], metrics['hist_real'], width=0.03, alpha=0.6, label="Real")
-    plt.bar(metrics['bins_fake'], metrics['hist_fake'], width=0.03, alpha=0.6, label="Generado")
-    plt.title("Histograma de magnitudes")
-    plt.xlabel("|h[n]|")
-    plt.ylabel("Probability Density")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(os.path.join(args.save_dir, "histograma.png"))
-
-    plt.figure(figsize=(8, 4))
-    stride = max(1, len(metrics['freqs']) // 20)
-
-    plt.plot(
-        metrics['freqs'],
-        metrics['psd_real_db'],
-        label='Real',
-        linewidth=2,
-        marker='o',
-        markersize=3,
-        markevery=stride
-    )
-
-    plt.plot(
-        metrics['freqs'],
-        metrics['psd_fake_db'],
-        label='Generado',
-        linewidth=2,
-        linestyle='--',
-        marker='x',
-        markersize=3,
-        markevery=stride
-    )
-
-    plt.grid(True, alpha=0.3)
-    plt.title("PSD (dB/Hz) Real vs Generado")
-    plt.xlabel("Frequency (Hz)")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(args.save_dir, "psd.png"))
-
-    num_plot = min(8, args.num_eval)
-
-    fig, axes = plt.subplots(4, 2, figsize=(12, 8))
-    axes = axes.flatten()
-
-    for i in range(num_plot):
-        stride = max(1, len(real_mag[i]) // 20)
-
-        axes[i].plot(
-            real_mag[i],
-            label='Real',
-            linewidth=1.8,
-            marker='o',
-            markersize=3,
-            markevery=stride
-        )
-
-        axes[i].plot(
-            fake_mag[i],
-            label='Generado',
-            linewidth=1.8,
-            linestyle='--',
-            marker='x',
-            markersize=3,
-            markevery=stride
-        )
-
-        axes[i].grid(True, alpha=0.3)
-        axes[i].set_title(f"Señal {i + 1}", fontsize=9)
-        axes[i].set_xlabel("Tap index")
-        axes[i].set_ylabel("|h[n]|")
-        axes[i].tick_params(axis='both', labelsize=7)
-
-    # eliminar subplots vacíos si hay menos de 8
-    for j in range(num_plot, len(axes)):
-        fig.delaxes(axes[j])
-
-    fig.suptitle(
-        f"Comparación señales reales vs {args.model_type.upper()}",
-        fontsize=14
-    )
-
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper right')
-
-    plt.tight_layout()
-
-    plt.savefig(
-        os.path.join(args.save_dir, "real_vs_generada.png")
-    )
-
-    plot_delay_distribution(args, metrics)
-    plot_boxplot_delay(args, metrics)
-    plot_cdf(args, real_mag, fake_mag)
-    plot_kde(args, real_mag, fake_mag)
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, required=True)
-    parser.add_argument("--model_type", type=str, choices=['gan', 'dcgan', 'wgan', 'ddpm', 'ddim'], default='dcgan')
-    parser.add_argument("--device", type=str, default="cpu")
+def main():
+    parser = argparse.ArgumentParser(description="Evaluación de modelos generativos de canal")
+    parser.add_argument("--config", default=os.path.join(THIS_DIR, "evaluation_config.json"))
+    parser.add_argument("--models", nargs="+", choices=list(MODEL_LABELS), default=None,
+                        help="Modelos a evaluar (por defecto los de la configuración)")
+    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--reuse-generated", action="store_true",
+                        help="Usa los canales ya generados en save_dir/generated si existen")
+    parser.add_argument("--no-ber", action="store_true", help="No calcula las curvas de BER")
     args = parser.parse_args()
 
-    config = load_config()
+    config = load_config(args.config)
+    seed = config["experiment"]["seed"]
+    set_seed(seed)
+    ev = config["evaluation"]
+    models = args.models or ev["models"]
+    num_samples = ev["num_samples"]
+    thresholds = ev.get("coherence_thresholds", [0.9, 0.5])
+    ber_cfg = config.get("ber", {})
+    do_ber = ber_cfg.get("enabled", True) and not args.no_ber
 
-    args.data = config["data"]["path"]
-    args.num_eval = config["evaluation"]["num_samples"]
-    args.delta_tau = config["evaluation"]["delta_tau"]
+    save_dir = repo_path(config["paths"]["save_dir"])
+    gen_dir = os.path.join(save_dir, "generated")
+    os.makedirs(gen_dir, exist_ok=True)
 
-    base_save_dir = config["paths"]["eval"]["base_dir"]
+    dt = sampling_period(config)
+    print(f"Periodo de muestreo de los taps: {dt * 1e9:.3f} ns (fs = {1 / dt / 1e6:.4f} MHz)")
 
-    # carpeta del experimento
-    experiment_name = os.path.basename(
-        os.path.dirname(args.model)
-    )
+    # Datos reales
+    real_data = np.load(repo_path(config["data"]["path"])).astype(np.float32)
+    N_real, _, L = real_data.shape
+    assert L == config["data"]["signal_length"], "signal_length no coincide con el dataset"
+    h_real = to_complex(real_data)
+    rng = np.random.RandomState(seed)
+    real_subset = h_real[rng.choice(N_real, min(num_samples, N_real), replace=False)]
+    print(f"Dataset real: {real_data.shape} (BER con un subconjunto de {len(real_subset)})")
 
-    args.save_dir = os.path.join(
-        base_save_dir,
-        args.model_type.upper(),
-        experiment_name
-    )
+    # Generar o cargar canales
+    fake = {}
+    for mt in models:
+        out_path = os.path.join(gen_dir, f"h_generated_{mt}.npy")
+        mcfg = config["models"][mt]
+        ckpt = repo_path(mcfg["checkpoint"])
+        if args.reuse_generated and os.path.exists(out_path):
+            print(f"[{MODEL_LABELS[mt]}] reutilizando {out_path}")
+            data = np.load(out_path)
+        elif os.path.exists(ckpt):
+            print(f"[{MODEL_LABELS[mt]}] generando {num_samples} canales con {ckpt} ...")
+            data = generate_signals(mt, {**mcfg, "checkpoint": ckpt}, num_samples, L, args.device,
+                                    real_data, seed, batch_size=ev.get("batch_size", 500))
+            np.save(out_path, data)
+        elif os.path.exists(out_path):
+            print(f"[{MODEL_LABELS[mt]}] no existe el checkpoint, uso los canales guardados en {out_path}")
+            data = np.load(out_path)
+        else:
+            print(f"[{MODEL_LABELS[mt]}] AVISO: no hay checkpoint ({ckpt}) ni canales generados; se omite")
+            continue
+        if data.shape[1:] != (2, L):
+            raise ValueError(f"{mt}: forma {data.shape}, se esperaba (N, 2, {L})")
+        fake[mt] = to_complex(data)
 
-    os.makedirs(args.save_dir, exist_ok=True)
+    if not fake:
+        print("No hay ningún modelo que evaluar.")
+        return
 
-    main(args, config)
+    # Rejillas comunes para CDF/KDE de |h|
+    max_mag = max(np.abs(h_real).max(), *(np.abs(f).max() for f in fake.values()))
+    mag_grid = np.linspace(0, max_mag, 500)
+    mag_db_grid = np.linspace(-80, 20 * np.log10(max_mag + 1e-12), 500)
+
+    print("\nCalculando métricas ...")
+    real_st = channel_stats(h_real, dt, mag_grid, mag_db_grid, seed=seed)
+    fake_st = {mt: channel_stats(h, dt, mag_grid, mag_db_grid, seed=seed) for mt, h in fake.items()}
+    df = 1 / dt / L
+    results = {mt: compare(real_st, st, df, thresholds) for mt, st in fake_st.items()}
+
+    # BER (mismos bits y ruido para todos los conjuntos de canales)
+    ber_results = {}
+    if do_ber:
+        snr = ber_cfg.get("snr_db", list(range(0, 31, 2)))
+        ber_cfg["snr_db"] = snr
+        for mod in ber_cfg.get("modulations", ["QPSK"]):
+            print(f"BER {mod} ...")
+            kw = dict(mod_type=mod, nfft=ber_cfg.get("nfft"), n_ofdm=ber_cfg.get("n_ofdm", 1), seed=seed)
+            res = {"real": ber_curve(real_subset, snr, **kw)}
+            for mt, h in fake.items():
+                res[mt] = ber_curve(h[: len(real_subset)], snr, **kw)
+            nfft = ber_cfg.get("nfft") or L
+            res["_n_bits"] = len(real_subset) * nfft * ber_cfg.get("n_ofdm", 1) * (2 if mod == "QPSK" else 4)
+            ber_results[mod] = res
+            for mt in fake:
+                results[mt][f"ber_{mod}_mae_log10"] = float(np.nanmean(np.abs(
+                    np.log10(np.maximum(res[mt], 1e-12)) - np.log10(np.maximum(res["real"], 1e-12)))))
+
+    # Salidas
+    cfg_info = [f"Datos reales: {config['data']['path']} ({N_real} canales, L={L})",
+                f"Muestras generadas por modelo: {num_samples}",
+                f"Periodo de muestreo: {dt * 1e9:.3f} ns"]
+    write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds)
+
+    ex_rng = np.random.default_rng(seed)
+    examples = (h_real[ex_rng.choice(N_real, 4, replace=False)], {mt: h[:4] for mt, h in fake.items()})
+    plot_all(save_dir, real_st, fake_st, (mag_grid, mag_db_grid), dt, thresholds, ber_results, ber_cfg,
+             examples)
+
+    strip = lambda d: {k: v for k, v in d.items() if not k.startswith("_")}  # noqa: E731
+    with open(os.path.join(save_dir, "metrics.pkl"), "wb") as f:
+        pickle.dump({"real": strip(real_st), "fake": {k: strip(v) for k, v in fake_st.items()},
+                     "metrics": results, "ber": ber_results, "grids": (mag_grid, mag_db_grid),
+                     "dt": dt, "config": config}, f)
+    print(f"\nResultados guardados en {save_dir}")
+
+
+if __name__ == "__main__":
+    main()

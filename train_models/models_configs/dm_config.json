@@ -31,7 +31,7 @@
   },
 
   "paths": {
-    "save_dir": "checkpoints/sodupe_180/ddpm",
+    "save_dir": "checkpoints/sodupe_180",
     "best_model": "best_model.pth"
   }
 }
