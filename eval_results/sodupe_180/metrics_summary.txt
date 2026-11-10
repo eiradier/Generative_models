@@ -3,34 +3,34 @@ Datos reales: data/datos_loopback/ch_sodupe_180_time_L200.npy (14199 canales, L=
 Muestras generadas por modelo: 3000
 Periodo de muestreo: 109.375 ns
 
-Metric                           GAN       DCGAN
-------------------------------------------------
-PDP MAE (lin)              6.794e-04   2.564e-03
-PDP MSE (lin)              1.599e-05   3.744e-04
-PDP MAE (dB)                   1.732       3.370
-Energy fake/real (dB)          0.147       1.253
-Mean delay real (ns)          200.40      200.40
-Mean delay fake (ns)          194.13      161.48
-Mean delay MAE (ns)             6.27       38.91
-Mean delay KS                  0.120       0.532
-Mean delay t-test p         6.82e-16    0.00e+00
-RMS delay real (ns)           602.58      602.58
-RMS delay fake (ns)           595.90      627.17
-RMS delay MAE (ns)              6.67       24.59
-RMS delay KS                   0.101       0.112
-RMS delay t-test p          2.30e-04    3.37e-10
-Std per tap MAE            1.303e-03   6.047e-03
-|h| KS distance                0.036       0.040
-E|H(f)|^2 MAE (dB)             0.553       3.151
-Freq. corr. MAE               0.0256      0.0637
-Bc90 real (MHz)               0.3078      0.3078
-Bc90 fake (MHz)               0.3239      0.4536
-Bc90 error (MHz)              0.0160      0.1458
-Bc50 real (MHz)               1.4842      1.4842
-Bc50 fake (MHz)               1.4783      2.0609
-Bc50 error (MHz)              0.0060      0.5767
-BER 16QAM |dlog10|             0.023       0.117
-BER QPSK |dlog10|              0.035       0.133
+Metric                           GAN       DCGAN        WGAN        DDPM        DDIM
+------------------------------------------------------------------------------------
+PDP MAE (lin)              6.794e-04   2.564e-03   6.812e-04   5.755e-04   2.284e-04
+PDP MSE (lin)              1.599e-05   3.744e-04   1.324e-05   1.752e-05   1.335e-06
+PDP MAE (dB)                   1.732       3.370       5.645       4.693       4.155
+Energy fake/real (dB)          0.147       1.253      -0.182       0.093      -0.170
+Mean delay real (ns)          200.40      200.40      200.40      200.40      200.40
+Mean delay fake (ns)          194.13      161.48      265.35      213.63      169.48
+Mean delay MAE (ns)             6.27       38.91       64.95       13.23       30.92
+Mean delay KS                  0.120       0.532       0.391       0.085       0.285
+Mean delay t-test p         6.82e-16    0.00e+00    0.00e+00    5.69e-25   1.63e-163
+RMS delay real (ns)           602.58      602.58      602.58      602.58      602.58
+RMS delay fake (ns)           595.90      627.17     1387.66      862.10      541.76
+RMS delay MAE (ns)              6.67       24.59      785.08      259.53       60.82
+RMS delay KS                   0.101       0.112       0.989       0.570       0.292
+RMS delay t-test p          2.30e-04    3.37e-10    0.00e+00    0.00e+00    2.69e-65
+Std per tap MAE            1.303e-03   6.047e-03   2.402e-03   1.387e-03   1.307e-03
+|h| KS distance                0.036       0.040       0.296       0.205       0.178
+E|H(f)|^2 MAE (dB)             0.553       3.151       0.491       0.263       0.310
+Freq. corr. MAE               0.0256      0.0637      0.0483      0.0269      0.0161
+Bc90 real (MHz)               0.3078      0.3078      0.3078      0.3078      0.3078
+Bc90 fake (MHz)               0.3239      0.4536      0.3241      0.3039      0.3342
+Bc90 error (MHz)              0.0160      0.1458      0.0163      0.0039      0.0264
+Bc50 real (MHz)               1.4842      1.4842      1.4842      1.4842      1.4842
+Bc50 fake (MHz)               1.4783      2.0609      2.8787      1.5578      1.7473
+Bc50 error (MHz)              0.0060      0.5767      1.3945      0.0736      0.2631
+BER 16QAM |dlog10|             0.023       0.117       0.011       0.015       0.015
+BER QPSK |dlog10|              0.035       0.133       0.026       0.018       0.014
 
 KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).
 t-test p > 0.05: no hay diferencia significativa entre las medias.
