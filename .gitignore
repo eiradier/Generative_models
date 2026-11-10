@@ -4,3 +4,5 @@ eval_results/
 __pycache__/
 *.pyc
 logs/
+hpsearch/**/*.pth
+hpsearch/**/*.npz
