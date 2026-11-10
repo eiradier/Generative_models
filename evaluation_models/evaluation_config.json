@@ -4,7 +4,7 @@
   },
 
   "data": {
-    "path": "data/datos_loopback/new_ch_time_worst.npy",
+    "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy",
     "signal_length": 200
   },
 
@@ -41,7 +41,7 @@
 
   "paths": {
     "eval": {
-      "base_dir": "eval_results/datos_loopback/DDIM_sweep_2"
+      "base_dir": "eval_results/sodupe_180/DDIM_sweep_2"
     }
   }
 }
