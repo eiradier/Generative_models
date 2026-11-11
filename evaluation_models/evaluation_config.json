@@ -5,7 +5,7 @@
   "data": {
     "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy",
     "split_file": "data/datos_loopback/ch_sodupe_180_time_L200_split.npz",
-    "subset": "all",
+    "subset": "test",
     "signal_length": 200
   },
   "sampling": {
@@ -13,21 +13,21 @@
   },
   "models": {
     "gan": {
-      "checkpoint": "checkpoints/sodupe_180_tapnorm/GAN_Conv1D/best_model.pth"
+      "checkpoint": "checkpoints/sodupe_180_split/GAN_Conv1D/best_model.pth"
     },
     "dcgan": {
-      "checkpoint": "checkpoints/sodupe_180_tapnorm/DCGAN_Conv1D/model_best.pth"
+      "checkpoint": "checkpoints/sodupe_180_split/DCGAN_Conv1D/model_best.pth"
     },
     "wgan": {
-      "checkpoint": "checkpoints/sodupe_180_tapnorm/WGAN_Conv1D/best_model.pth"
+      "checkpoint": "checkpoints/sodupe_180_split/WGAN_Conv1D/best_model.pth"
     },
     "ddpm": {
-      "checkpoint": "checkpoints/sodupe_180_tapnorm/DDPM/best_model.pth",
+      "checkpoint": "checkpoints/sodupe_180_split/DDPM/best_model.pth",
       "T": 1000,
       "time_emb_dim": 64
     },
     "ddim": {
-      "checkpoint": "checkpoints/sodupe_180_tapnorm/DDIM/best_model.pth",
+      "checkpoint": "checkpoints/sodupe_180_split/DDIM/best_model.pth",
       "T": 1000,
       "time_emb_dim": 64,
       "sampling_steps": 100,
@@ -77,6 +77,6 @@
     "n_ofdm": 1
   },
   "paths": {
-    "save_dir": "eval_results/sodupe_180_tapnorm"
+    "save_dir": "eval_results/sodupe_180_split"
   }
 }
