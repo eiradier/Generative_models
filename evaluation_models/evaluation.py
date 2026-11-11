@@ -34,7 +34,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from scipy.stats import gaussian_kde, ks_2samp, ttest_ind
+from scipy.stats import gaussian_kde, kurtosis, ks_2samp, ttest_ind
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(THIS_DIR)
@@ -244,6 +244,20 @@ def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0, delay_
     H = np.fft.fft(h, axis=1)
     freq_power = np.fft.fftshift((np.abs(H) ** 2).mean(axis=0))
 
+    # Nulos en frecuencia de cada canal (|H(f)|^2 normalizado a su media en la banda):
+    # profundidad del nulo más profundo y ganancia de ruido del ecualizador ZF, E_f{1/|H(f)|^2}, que es lo
+    # que determina la BER con ZF. Son funciones no lineales de h: un modelo que solo reproduzca la
+    # estadística de segundo orden (p. ej. el gaussiano) no tiene por qué acertarlas.
+    Hn = np.abs(H) ** 2
+    Hn = Hn / (Hn.mean(axis=1, keepdims=True) + 1e-30)
+    null_depth_db = 10 * np.log10(Hn.min(axis=1) + 1e-30)
+    zf_gain_db = 10 * np.log10(np.mean(1.0 / np.maximum(Hn, 1e-12), axis=1))
+
+    # Curtosis en exceso de la parte difusa de cada tap (h - media del tap), Re e Im por separado
+    # (0 = gaussiana; < 0: distribución más "plana", p. ej. fase que rota; > 0: colas pesadas).
+    dif = h - h.mean(axis=0)
+    kurt_tap = 0.5 * (kurtosis(dif.real, axis=0) + kurtosis(dif.imag, axis=0))
+
     # Función de correlación en frecuencia R(Δk) = E{H[k+Δk] H*[k]} (circular, promediada en k
     # y en realizaciones). Por la relación de Wiener-Khinchin es la DFT del PDP medio.
     R = np.fft.fft(pdp)
@@ -268,6 +282,8 @@ def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0, delay_
         "mean_delay": float(mean_delay.mean()), "rms_delay": float(rms_delay.mean()),
         "std_tap": np.abs(h).std(axis=0),
         "freq_power": freq_power,
+        "null_depth_db_all": null_depth_db, "zf_gain_db_all": zf_gain_db,
+        "kurt_tap": kurt_tap,
         "freq_corr": freq_corr,
         "mag_cdf": cdf, "mag_cdf_db": cdf_db,
         "mag_kde": kde, "mag_kde_db": kde_db,
@@ -314,6 +330,22 @@ def compare(real, fake, df, thresholds):
     ref = real["freq_power"].max()
     m["freq_power_mae_db"] = mae(to_db(real["freq_power"] / ref), to_db(fake["freq_power"] / ref))
     m["freq_corr_mae"] = mae(real["freq_corr"], fake["freq_corr"])
+
+    for k in ("null_depth_db", "zf_gain_db"):
+        m[f"{k}_real"] = float(np.median(real[f"{k}_all"]))
+        m[f"{k}_fake"] = float(np.median(fake[f"{k}_all"]))
+        m[f"{k}_ks"] = float(ks_2samp(real[f"{k}_all"], fake[f"{k}_all"]).statistic)
+    # Curtosis: el tap del pico (acoplamiento directo, casi constante) va aparte porque tiene valores
+    # atípicos esporádicos que la disparan (decenas). El resto: taps a menos de 30 dB del pico del PDP
+    # real (en la cola la estimación es ruidosa); mediana y MAE.
+    peak = int(np.argmax(real["pdp"]))
+    strong = real["pdp"] > real["pdp"].max() * 1e-3
+    strong[peak] = False
+    m["kurt_peak_real"] = float(real["kurt_tap"][peak])
+    m["kurt_peak_fake"] = float(fake["kurt_tap"][peak])
+    m["kurt_real"] = float(np.median(real["kurt_tap"][strong]))
+    m["kurt_fake"] = float(np.median(fake["kurt_tap"][strong]))
+    m["kurt_mae"] = mae(real["kurt_tap"][strong], fake["kurt_tap"][strong])
     for thr in thresholds:
         bc_r = coherence_bandwidth(real["freq_corr"], df, thr)
         bc_f = coherence_bandwidth(fake["freq_corr"], df, thr)
@@ -440,6 +472,32 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
     _style(ax, r"Frequency separation $\Delta f$ (MHz)", r"$|R_H(\Delta f)|$ (normalized)")
     _save(fig, save_dir, "fig_frequency_correlation")
 
+    # Nulos en frecuencia: CDF de la profundidad del nulo y de la ganancia de ruido ZF
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.8))
+    for ax, key, xl in ((axes[0], "null_depth_db_all", r"Deepest null $\min_f |H(f)|^2$ (dB)"),
+                        (axes[1], "zf_gain_db_all", r"ZF noise gain $E_f\{1/|H(f)|^2\}$ (dB)")):
+        for n, st in fakes.items():
+            v = np.sort(st[key])
+            ax.plot(v, np.arange(1, len(v) + 1) / len(v), color=COLORS[n], ls=LINESTYLES.get(n, "--"), lw=1.3,
+                    label=MODEL_LABELS[n])
+        v = np.sort(real[key])
+        ax.plot(v, np.arange(1, len(v) + 1) / len(v), color="black", lw=2, label="Real")
+        _style(ax, xl, "CDF", legend=ax is axes[0], loc="lower right" if ax is axes[1] else "upper left")
+    _save(fig, save_dir, "fig_null_depth")
+
+    # Curtosis de la parte difusa por tap (taps a menos de 30 dB del pico del PDP, sin el tap del pico)
+    strong = real["pdp"] > real["pdp"].max() * 1e-3
+    strong[np.argmax(real["pdp"])] = False  # el tap del pico va en la tabla (valores atípicos)
+    strong = np.where(strong)[0]
+    fig, ax = plt.subplots(figsize=(9, 5))
+    for n, st in fakes.items():
+        ax.plot(delay_us[strong], st["kurt_tap"][strong], color=COLORS[n], ls=LINESTYLES.get(n, "--"), lw=1.3,
+                marker=".", ms=4, label=MODEL_LABELS[n])
+    ax.plot(delay_us[strong], real["kurt_tap"][strong], color="black", lw=2, marker="o", ms=4, label="Real")
+    ax.axhline(0, color="gray", lw=0.8, ls=":")
+    _style(ax, r"Delay $\tau$ ($\mu$s)", "Excess kurtosis (diffuse part)")
+    _save(fig, save_dir, "fig_kurtosis")
+
     # Distribución del RMS delay spread y del retardo medio, para cada umbral
     delay_thresholds = real.get("delay_thresholds", [None])
     delay_figs = []
@@ -551,6 +609,17 @@ def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, 
         ("|h| KS distance", "mag_ks", ".3f"),
         ("E|H(f)|^2 MAE (dB)", "freq_power_mae_db", ".3f"),
         ("Freq. corr. MAE", "freq_corr_mae", ".4f"),
+        ("Null depth real (dB)", "null_depth_db_real", ".2f"),
+        ("Null depth fake (dB)", "null_depth_db_fake", ".2f"),
+        ("Null depth KS", "null_depth_db_ks", ".3f"),
+        ("ZF noise gain real (dB)", "zf_gain_db_real", ".2f"),
+        ("ZF noise gain fake (dB)", "zf_gain_db_fake", ".2f"),
+        ("ZF noise gain KS", "zf_gain_db_ks", ".3f"),
+        ("Kurtosis peak tap real", "kurt_peak_real", ".2f"),
+        ("Kurtosis peak tap fake", "kurt_peak_fake", ".2f"),
+        ("Kurtosis real (median)", "kurt_real", ".3f"),
+        ("Kurtosis fake (median)", "kurt_fake", ".3f"),
+        ("Kurtosis MAE", "kurt_mae", ".3f"),
     ]
     for thr in thresholds:
         t = int(thr * 100)
@@ -569,6 +638,10 @@ def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, 
     for label, key, fmt in rows:
         lines.append(f"{label:<{w}}" + "".join(f"{results[m][key]:>12{fmt}}" for m in models))
     lines += ["", "Retardos: 'sin sufijo' = todos los taps; '@X dB' = solo taps con potencia >= pico del canal - X dB.",
+              "Null depth / ZF noise gain: mediana por canal de min_f |H(f)|^2 y E_f{1/|H(f)|^2} (|H|^2 normalizado",
+              "  a su media en la banda). Kurtosis: curtosis en exceso de la parte difusa (h - media del tap), media",
+              "  de Re e Im (0 = gaussiana); 'peak tap' = tap del pico del PDP; median/MAE = resto de taps a menos",
+              "  de 30 dB del pico.",
               "KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).",
               "t-test p > 0.05: no hay diferencia significativa entre las medias."]
     txt = "\n".join(lines)
