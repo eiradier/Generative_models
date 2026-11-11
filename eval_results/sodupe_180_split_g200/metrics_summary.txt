@@ -51,6 +51,17 @@ Std per tap MAE            1.663e-03   1.466e-03   1.403e-03   1.701e-03   1.463
 |h| KS distance                0.084       0.074       0.079       0.113       0.040       0.072       0.067
 E|H(f)|^2 MAE (dB)             1.434       1.144       1.172       1.073       1.003       1.132       1.068
 Freq. corr. MAE               0.0541      0.0733      0.1104      0.1358      0.1155      0.0868      0.0872
+Null depth real (dB)          -16.66      -16.66      -16.66      -16.66      -16.66      -16.66      -16.66
+Null depth fake (dB)          -20.22      -19.31      -19.44      -18.11      -18.74      -21.51      -20.75
+Null depth KS                  0.294       0.245       0.250       0.188       0.221       0.368       0.325
+ZF noise gain real (dB)         4.46        4.46        4.46        4.46        4.46        4.46        4.46
+ZF noise gain fake (dB)         5.79        5.17        5.47        4.87        5.25        6.33        6.04
+ZF noise gain KS               0.268       0.188       0.223       0.147       0.197       0.342       0.300
+Kurtosis peak tap real         93.73       93.73       93.73       93.73       93.73       93.73       93.73
+Kurtosis peak tap fake         -0.49       -0.32       -0.36        1.33        2.71       -0.07        0.75
+Kurtosis real (median)        -0.606      -0.606      -0.606      -0.606      -0.606      -0.606      -0.606
+Kurtosis fake (median)         0.036      -0.063      -0.080       0.408       0.187       0.030      -0.098
+Kurtosis MAE                   0.625       0.688       0.534       1.290       0.835       0.557       0.556
 Bc90 real (MHz)               0.3173      0.3173      0.3173      0.3173      0.3173      0.3173      0.3173
 Bc90 fake (MHz)               0.3092      0.3112      0.3149      0.3304      0.3390      0.2985      0.3017
 Bc90 error (MHz)              0.0080      0.0060      0.0024      0.0131      0.0217      0.0187      0.0155
@@ -61,5 +72,9 @@ BER 16QAM |dlog10|             0.050       0.025       0.019       0.019       0
 BER QPSK |dlog10|              0.084       0.053       0.045       0.036       0.033       0.088       0.085
 
 Retardos: 'sin sufijo' = todos los taps; '@X dB' = solo taps con potencia >= pico del canal - X dB.
+Null depth / ZF noise gain: mediana por canal de min_f |H(f)|^2 y E_f{1/|H(f)|^2} (|H|^2 normalizado
+  a su media en la banda). Kurtosis: curtosis en exceso de la parte difusa (h - media del tap), media
+  de Re e Im (0 = gaussiana); 'peak tap' = tap del pico del PDP; median/MAE = resto de taps a menos
+  de 30 dB del pico.
 KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).
 t-test p > 0.05: no hay diferencia significativa entre las medias.
