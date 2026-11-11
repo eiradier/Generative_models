@@ -1,0 +1,10 @@
+Referencia "real contra real": canales medidos de train/val comparados con test (misma métrica que los modelos)
+
+            selection_score  PDP MAE (dB)  KS RMS delay  KS |h|  KS mean delay  RMS delay (ns)
+train vs test      3.913         1.394         0.175       0.077      0.201          609.7
+val   vs test      3.823         1.258         0.194       0.063      0.287          609.3
+test (real)          -             -             -           -          -            553.2
+
+El bloque de test tiene un RMS delay ~55 ns menor que train y val (deriva del canal a lo largo de la
+medida). Un modelo perfecto de la distribución de entrenamiento obtendría aproximadamente estos valores
+contra test; todos los modelos quedan en ese nivel o mejor.
