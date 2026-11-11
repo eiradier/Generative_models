@@ -1,0 +1,36 @@
+===== EVALUACIÓN DE MODELOS GENERATIVOS =====
+Datos reales: data/datos_loopback/ch_sodupe_180_time_L200.npy, subconjunto 'all' (14199 canales, L=200)
+Muestras generadas por modelo: 3000
+Periodo de muestreo: 109.375 ns
+
+Metric                           GAN       DCGAN        WGAN        DDPM        DDIM
+------------------------------------------------------------------------------------
+PDP MAE (lin)              6.280e-04   8.713e-04   5.238e-04   6.535e-04   4.060e-04
+PDP MSE (lin)              2.735e-05   3.870e-05   8.389e-06   1.554e-05   5.138e-06
+PDP MAE (dB)                   0.312       0.428       0.383       0.500       0.721
+Energy fake/real (dB)          0.315       0.361      -0.431      -0.233      -0.292
+Mean delay real (ns)          200.40      200.40      200.40      200.40      200.40
+Mean delay fake (ns)          199.62      186.80      174.68      172.61      179.27
+Mean delay MAE (ns)             0.77       13.60       25.72       27.78       21.13
+Mean delay KS                  0.082       0.164       0.253       0.272       0.205
+Mean delay t-test p         4.11e-01    4.13e-34   6.11e-120   2.73e-149    1.91e-76
+RMS delay real (ns)           602.58      602.58      602.58      602.58      602.58
+RMS delay fake (ns)           612.04      597.04      601.22      585.49      566.77
+RMS delay MAE (ns)              9.47        5.54        1.35       17.08       35.80
+RMS delay KS                   0.051       0.030       0.017       0.152       0.208
+RMS delay t-test p          1.01e-04    1.48e-02    5.78e-01    3.10e-09    1.19e-33
+Std per tap MAE            1.112e-03   1.415e-03   6.957e-04   7.894e-04   6.719e-04
+|h| KS distance                0.012       0.009       0.020       0.022       0.037
+E|H(f)|^2 MAE (dB)             0.473       0.774       0.505       0.516       0.694
+Freq. corr. MAE               0.0433      0.0337      0.0484      0.0566      0.0265
+Bc90 real (MHz)               0.3078      0.3078      0.3078      0.3078      0.3078
+Bc90 fake (MHz)               0.3157      0.3245      0.3341      0.3431      0.3353
+Bc90 error (MHz)              0.0078      0.0167      0.0262      0.0353      0.0274
+Bc50 real (MHz)               1.4842      1.4842      1.4842      1.4842      1.4842
+Bc50 fake (MHz)               1.3664      2.4801      2.7568      2.6147      2.2406
+Bc50 error (MHz)              0.1178      0.9958      1.2726      1.1305      0.7564
+BER 16QAM |dlog10|             0.030       0.011       0.011       0.050       0.032
+BER QPSK |dlog10|              0.054       0.022       0.015       0.059       0.037
+
+KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).
+t-test p > 0.05: no hay diferencia significativa entre las medias.

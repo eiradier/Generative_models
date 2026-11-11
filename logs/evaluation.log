@@ -1,0 +1,90 @@
+Periodo de muestreo de los taps: 109.375 ns (fs = 9.1429 MHz)
+Referencia real: subconjunto 'all' (14199 canales)
+Dataset real: (14199, 2, 200) (BER con un subconjunto de 3000)
+[GAN] reutilizando /home/user/generative_models/eval_results/sodupe_180_tapnorm/generated/h_generated_gan.npy
+[DCGAN] reutilizando /home/user/generative_models/eval_results/sodupe_180_tapnorm/generated/h_generated_dcgan.npy
+[WGAN] reutilizando /home/user/generative_models/eval_results/sodupe_180_tapnorm/generated/h_generated_wgan.npy
+[DDPM] reutilizando /home/user/generative_models/eval_results/sodupe_180_tapnorm/generated/h_generated_ddpm.npy
+[DDIM] reutilizando /home/user/generative_models/eval_results/sodupe_180_tapnorm/generated/h_generated_ddim.npy
+
+Calculando métricas ...
+BER QPSK ...
+BER 16QAM ...
+
+===== EVALUACIÓN DE MODELOS GENERATIVOS =====
+Datos reales: data/datos_loopback/ch_sodupe_180_time_L200.npy, subconjunto 'all' (14199 canales, L=200)
+Muestras generadas por modelo: 3000
+Periodo de muestreo: 109.375 ns
+
+Metric                           GAN       DCGAN        WGAN        DDPM        DDIM
+------------------------------------------------------------------------------------
+PDP MAE (lin)              6.280e-04   8.713e-04   5.238e-04   6.535e-04   4.060e-04
+PDP MSE (lin)              2.735e-05   3.870e-05   8.389e-06   1.554e-05   5.138e-06
+PDP MAE (dB)                   0.312       0.428       0.383       0.500       0.721
+Energy fake/real (dB)          0.315       0.361      -0.431      -0.233      -0.292
+Mean delay real (ns)          200.40      200.40      200.40      200.40      200.40
+Mean delay fake (ns)          199.62      186.80      174.68      172.61      179.27
+Mean delay MAE (ns)             0.77       13.60       25.72       27.78       21.13
+Mean delay KS                  0.082       0.164       0.253       0.272       0.205
+Mean delay t-test p         4.11e-01    4.13e-34   6.11e-120   2.73e-149    1.91e-76
+RMS delay real (ns)           602.58      602.58      602.58      602.58      602.58
+RMS delay fake (ns)           612.04      597.04      601.22      585.49      566.77
+RMS delay MAE (ns)              9.47        5.54        1.35       17.08       35.80
+RMS delay KS                   0.051       0.030       0.017       0.152       0.208
+RMS delay t-test p          1.01e-04    1.48e-02    5.78e-01    3.10e-09    1.19e-33
+Std per tap MAE            1.112e-03   1.415e-03   6.957e-04   7.894e-04   6.719e-04
+|h| KS distance                0.012       0.009       0.020       0.022       0.037
+E|H(f)|^2 MAE (dB)             0.473       0.774       0.505       0.516       0.694
+Freq. corr. MAE               0.0433      0.0337      0.0484      0.0566      0.0265
+Bc90 real (MHz)               0.3078      0.3078      0.3078      0.3078      0.3078
+Bc90 fake (MHz)               0.3157      0.3245      0.3341      0.3431      0.3353
+Bc90 error (MHz)              0.0078      0.0167      0.0262      0.0353      0.0274
+Bc50 real (MHz)               1.4842      1.4842      1.4842      1.4842      1.4842
+Bc50 fake (MHz)               1.3664      2.4801      2.7568      2.6147      2.2406
+Bc50 error (MHz)              0.1178      0.9958      1.2726      1.1305      0.7564
+BER 16QAM |dlog10|             0.030       0.011       0.011       0.050       0.032
+BER QPSK |dlog10|              0.054       0.022       0.015       0.059       0.037
+
+KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).
+t-test p > 0.05: no hay diferencia significativa entre las medias.
+
+===== BER QPSK (ZF, 1200000 bits por punto) =====
+SNR (dB)          Real         GAN       DCGAN        WGAN        DDPM        DDIM    AWGN th.   Rayl. th.
+0            1.962e-01   1.963e-01   1.935e-01   1.943e-01   1.922e-01   1.945e-01   1.587e-01   2.113e-01
+2            1.498e-01   1.502e-01   1.471e-01   1.476e-01   1.449e-01   1.478e-01   1.040e-01   1.675e-01
+4            1.078e-01   1.085e-01   1.053e-01   1.053e-01   1.022e-01   1.054e-01   5.650e-02   1.269e-01
+6            7.360e-02   7.452e-02   7.120e-02   7.095e-02   6.755e-02   7.106e-02   2.301e-02   9.207e-02
+8            4.801e-02   4.934e-02   4.637e-02   4.583e-02   4.273e-02   4.559e-02   6.004e-03   6.431e-02
+10           3.025e-02   3.178e-02   2.945e-02   2.873e-02   2.632e-02   2.816e-02   7.827e-04   4.356e-02
+12           1.872e-02   2.019e-02   1.864e-02   1.788e-02   1.573e-02   1.724e-02   3.430e-05   2.884e-02
+14           1.154e-02   1.280e-02   1.163e-02   1.098e-02   9.525e-03   1.035e-02   2.695e-07   1.879e-02
+16           7.094e-03   8.100e-03   7.253e-03   6.873e-03   5.844e-03   6.285e-03   1.399e-10   1.211e-02
+18           4.324e-03   5.079e-03   4.551e-03   4.291e-03   3.533e-03   3.769e-03   9.845e-16   7.741e-03
+20           2.637e-03   3.203e-03   2.822e-03   2.641e-03   2.180e-03   2.278e-03   7.620e-24   4.926e-03
+22           1.659e-03   1.998e-03   1.780e-03   1.610e-03   1.338e-03   1.428e-03   1.210e-36   3.125e-03
+24           1.022e-03   1.249e-03   1.111e-03   1.009e-03   8.383e-04   8.858e-04   7.150e-57   1.979e-03
+26           6.208e-04   8.000e-04   7.150e-04   6.492e-04   5.342e-04   5.375e-04   7.111e-89   1.251e-03
+28           3.750e-04   5.133e-04   4.233e-04   3.933e-04   3.408e-04   3.425e-04  1.547e-139   7.906e-04
+30           2.308e-04   3.000e-04   2.558e-04   2.583e-04   2.100e-04   2.208e-04  8.979e-220   4.993e-04
+
+===== BER 16QAM (ZF, 2400000 bits por punto) =====
+SNR (dB)          Real         GAN       DCGAN        WGAN        DDPM        DDIM    AWGN th.   Rayl. th.
+0            3.108e-01   3.111e-01   3.100e-01   3.099e-01   3.081e-01   3.099e-01   2.455e-01   2.619e-01
+2            2.692e-01   2.694e-01   2.680e-01   2.676e-01   2.655e-01   2.677e-01   2.150e-01   2.363e-01
+4            2.257e-01   2.259e-01   2.243e-01   2.237e-01   2.215e-01   2.238e-01   1.794e-01   2.070e-01
+6            1.822e-01   1.826e-01   1.805e-01   1.799e-01   1.774e-01   1.801e-01   1.396e-01   1.749e-01
+8            1.407e-01   1.413e-01   1.389e-01   1.383e-01   1.354e-01   1.384e-01   9.798e-02   1.418e-01
+10           1.030e-01   1.040e-01   1.011e-01   1.008e-01   9.755e-02   1.007e-01   5.899e-02   1.098e-01
+12           7.171e-02   7.266e-02   6.981e-02   6.922e-02   6.631e-02   6.923e-02   2.813e-02   8.136e-02
+14           4.746e-02   4.871e-02   4.604e-02   4.546e-02   4.272e-02   4.508e-02   9.376e-03   5.785e-02
+16           3.033e-02   3.172e-02   2.946e-02   2.885e-02   2.648e-02   2.831e-02   1.791e-03   3.975e-02
+18           1.895e-02   2.032e-02   1.856e-02   1.799e-02   1.608e-02   1.737e-02   1.432e-04   2.659e-02
+20           1.163e-02   1.289e-02   1.165e-02   1.117e-02   9.727e-03   1.054e-02   2.904e-06   1.745e-02
+22           7.167e-03   8.105e-03   7.302e-03   6.870e-03   5.879e-03   6.343e-03   6.755e-09   1.130e-02
+24           4.429e-03   5.141e-03   4.570e-03   4.243e-03   3.580e-03   3.832e-03   5.108e-13   7.249e-03
+26           2.737e-03   3.215e-03   2.905e-03   2.690e-03   2.195e-03   2.320e-03   1.701e-19   4.623e-03
+28           1.692e-03   2.049e-03   1.785e-03   1.681e-03   1.378e-03   1.417e-03   1.047e-29   2.937e-03
+30           1.045e-03   1.283e-03   1.115e-03   1.039e-03   8.671e-04   8.967e-04   7.832e-46   1.861e-03
+
+
+Resultados guardados en /home/user/generative_models/eval_results/sodupe_180_tapnorm
