@@ -56,7 +56,13 @@
       30,
       25,
       20
-    ]
+    ],
+    "channel_params": {
+      "fade_threshold_db": 10.0,
+      "se_snr_db": 20.0,
+      "delay_window_pct": 90.0,
+      "bc_threshold": 0.9
+    }
   },
   "ber": {
     "enabled": true,

@@ -216,7 +216,66 @@ def threshold_label(thr):
     return "sin umbral" if thr is None else f"umbral {thr:g} dB"
 
 
-def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0, delay_thresholds=(None,)):
+# Parámetros por canal (clásicos, no de segundo orden). Configurables en evaluation.channel_params.
+CHANNEL_PARAM_DEFAULTS = {"fade_threshold_db": 10.0, "se_snr_db": 20.0, "delay_window_pct": 90.0,
+                          "bc_threshold": 0.9}
+
+
+def per_channel_params(h, p, Hn, dt, delay_thresholds, cfg):
+    """
+    Parámetros clásicos calculados canal a canal (cada uno es un array de N valores):
+      ripple_db          rizado de la respuesta en frecuencia, max_f |H|^2 / min_f |H|^2 (dB)
+      fade_frac          fracción de la banda con |H(f)|^2 < media - fade_threshold_db
+      se                 eficiencia espectral media en la banda a se_snr_db, E_f{log2(1 + SNR |H(f)|^2)}
+                         (bit/s/Hz; su percentil 10 es la eficiencia de outage al 10%)
+      bc_inst_mhz        ancho de banda de coherencia de cada canal: primer Δf con |R_H(Δf)| < bc_threshold,
+                         con R_H la DFT del perfil |h|^2 del propio canal (MHz)
+      delay_window_ns    ventana de retardo (ITU-R P.1407): anchura del intervalo central que contiene el
+                         delay_window_pct % de la energía (ns)
+      n_taps_energy      número mínimo de taps que reúnen el delay_window_pct % de la energía
+      delay_interval_th<X>dB  intervalo de retardo (ITU-R P.1407): del primer al último tap por encima de
+                         pico - X dB, para cada umbral de delay_thresholds (ns)
+    Hn: |H(f)|^2 normalizado a su media en la banda (N, L).
+    """
+    N, L = h.shape
+    q = cfg["delay_window_pct"] / 100.0
+    out = {}
+    out["ripple_db"] = 10 * np.log10(Hn.max(axis=1) / np.maximum(Hn.min(axis=1), 1e-30))
+    out["fade_frac"] = np.mean(Hn < 10 ** (-cfg["fade_threshold_db"] / 10), axis=1)
+    out["se"] = np.mean(np.log2(1 + 10 ** (cfg["se_snr_db"] / 10) * Hn), axis=1)
+
+    R = np.abs(np.fft.fft(p, axis=1))[:, : L // 2 + 1]
+    R = R / np.maximum(R[:, :1], 1e-30)
+    below = R < cfg["bc_threshold"]
+    i = np.where(below.any(axis=1), below.argmax(axis=1), L // 2)
+    i0 = np.maximum(i - 1, 0)
+    r1, r2 = R[np.arange(N), i0], R[np.arange(N), i]
+    frac = np.where(i > 0, (r1 - cfg["bc_threshold"]) / np.maximum(r1 - r2, 1e-30), 0.0)
+    out["bc_inst_mhz"] = (i0 + frac) / (dt * L) / 1e6
+
+    ce = np.cumsum(p, axis=1) / np.maximum(p.sum(axis=1, keepdims=True), 1e-30)
+    lo, hi = (1 - q) / 2, 1 - (1 - q) / 2
+    out["delay_window_ns"] = ((ce >= hi).argmax(axis=1) - (ce >= lo).argmax(axis=1)) * dt * 1e9
+    cs = np.cumsum(np.sort(p, axis=1)[:, ::-1], axis=1) / np.maximum(p.sum(axis=1, keepdims=True), 1e-30)
+    out["n_taps_energy"] = (cs < q).sum(axis=1) + 1
+
+    for thr in delay_thresholds:
+        if thr is None:
+            continue
+        above = p >= p.max(axis=1, keepdims=True) * 10 ** (-thr / 10)
+        first = above.argmax(axis=1)
+        last = L - 1 - above[:, ::-1].argmax(axis=1)
+        out[f"delay_interval{threshold_tag(thr)}"] = (last - first) * dt * 1e9
+    return out
+
+
+def channel_param_keys(delay_thresholds):
+    keys = ["ripple_db", "fade_frac", "se", "bc_inst_mhz", "delay_window_ns", "n_taps_energy"]
+    return keys + [f"delay_interval{threshold_tag(t)}" for t in delay_thresholds if t is not None]
+
+
+def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0, delay_thresholds=(None,),
+                  channel_params=None):
     """
     Estadísticas de un conjunto de canales complejos h (N, L).
     delay_thresholds: umbrales (dB bajo el pico de cada canal) para el retardo medio y el RMS delay
@@ -258,6 +317,9 @@ def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0, delay_
     dif = h - h.mean(axis=0)
     kurt_tap = 0.5 * (kurtosis(dif.real, axis=0) + kurtosis(dif.imag, axis=0))
 
+    cp_cfg = {**CHANNEL_PARAM_DEFAULTS, **(channel_params or {})}
+    params = per_channel_params(h, p, Hn, dt, delay_thresholds, cp_cfg)
+
     # Función de correlación en frecuencia R(Δk) = E{H[k+Δk] H*[k]} (circular, promediada en k
     # y en realizaciones). Por la relación de Wiener-Khinchin es la DFT del PDP medio.
     R = np.fft.fft(pdp)
@@ -284,6 +346,8 @@ def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0, delay_
         "freq_power": freq_power,
         "null_depth_db_all": null_depth_db, "zf_gain_db_all": zf_gain_db,
         "kurt_tap": kurt_tap,
+        "channel_params": cp_cfg,
+        **{f"{k}_all": v for k, v in params.items()},
         "freq_corr": freq_corr,
         "mag_cdf": cdf, "mag_cdf_db": cdf_db,
         "mag_kde": kde, "mag_kde_db": kde_db,
@@ -346,6 +410,14 @@ def compare(real, fake, df, thresholds):
     m["kurt_real"] = float(np.median(real["kurt_tap"][strong]))
     m["kurt_fake"] = float(np.median(fake["kurt_tap"][strong]))
     m["kurt_mae"] = mae(real["kurt_tap"][strong], fake["kurt_tap"][strong])
+
+    # Parámetros por canal: mediana real/generada y KS
+    for k in channel_param_keys(real.get("delay_thresholds", [None])):
+        m[f"{k}_real"] = float(np.median(real[f"{k}_all"]))
+        m[f"{k}_fake"] = float(np.median(fake[f"{k}_all"]))
+        m[f"{k}_ks"] = float(ks_2samp(real[f"{k}_all"], fake[f"{k}_all"]).statistic)
+    m["se_out10_real"] = float(np.percentile(real["se_all"], 10))
+    m["se_out10_fake"] = float(np.percentile(fake["se_all"], 10))
     for thr in thresholds:
         bc_r = coherence_bandwidth(real["freq_corr"], df, thr)
         bc_f = coherence_bandwidth(fake["freq_corr"], df, thr)
@@ -498,6 +570,42 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
     _style(ax, r"Delay $\tau$ ($\mu$s)", "Excess kurtosis (diffuse part)")
     _save(fig, save_dir, "fig_kurtosis")
 
+    # CDF de los parámetros por canal
+    cp = real.get("channel_params", CHANNEL_PARAM_DEFAULTS)
+    xl = {"ripple_db": r"Ripple $\max_f|H|^2/\min_f|H|^2$ (dB)",
+          "fade_frac": f"Fraction of band in fade (< -{cp['fade_threshold_db']:g} dB)",
+          "se": f"Spectral efficiency @ {cp['se_snr_db']:g} dB (b/s/Hz)",
+          "bc_inst_mhz": f"Per-channel $B_c$ ({cp['bc_threshold']:g}) (MHz)",
+          "delay_window_ns": f"Delay window {cp['delay_window_pct']:g}% (ns)",
+          "n_taps_energy": f"Taps with {cp['delay_window_pct']:g}% of energy"}
+    for thr in real.get("delay_thresholds", [None]):
+        if thr is not None:
+            xl[f"delay_interval{threshold_tag(thr)}"] = f"Delay interval @ {thr:g} dB (ns)"
+    ncol = 4
+    nrow = int(np.ceil(len(xl) / ncol))
+    fig, axes = plt.subplots(nrow, ncol, figsize=(4.4 * ncol, 3.8 * nrow), squeeze=False)
+    for ax, (key, label) in zip(axes.ravel(), xl.items()):
+        for n, st in fakes.items():
+            v = np.sort(st[f"{key}_all"])
+            ax.plot(v, np.arange(1, len(v) + 1) / len(v), color=COLORS[n], ls=LINESTYLES.get(n, "--"), lw=1.2,
+                    label=MODEL_LABELS[n])
+        v = np.sort(real[f"{key}_all"])
+        ax.plot(v, np.arange(1, len(v) + 1) / len(v), color="black", lw=1.8, label="Real")
+        allv = np.concatenate([real[f"{key}_all"]] + [st[f"{key}_all"] for st in fakes.values()])
+        lo, hi = np.percentile(allv, [0.5, 99.5])
+        ax.set_xlim(lo - 0.02 * (hi - lo), hi + 0.02 * (hi - lo))  # sin las colas extremas
+        _style(ax, label, "CDF", legend=False)
+        ax.xaxis.label.set_size(10)
+    handles, labels_ = axes[0][0].get_legend_handles_labels()
+    spare = axes.ravel()[len(xl):]
+    for ax in spare:
+        ax.axis("off")
+    if len(spare):
+        spare[0].legend(handles, labels_, loc="center", frameon=False, fontsize=11)
+    else:
+        axes[0][0].legend(fontsize=8, loc="lower right")
+    _save(fig, save_dir, "fig_channel_params")
+
     # Distribución del RMS delay spread y del retardo medio, para cada umbral
     delay_thresholds = real.get("delay_thresholds", [None])
     delay_figs = []
@@ -576,7 +684,8 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
 
 # Tablas
 
-def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, delay_thresholds=(None,)):
+def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, delay_thresholds=(None,),
+                 cp_cfg=None):
     models = list(results.keys())
     rows = [
         ("PDP MAE (lin)", "pdp_mae", ".3e"), ("PDP MSE (lin)", "pdp_mse", ".3e"),
@@ -621,6 +730,24 @@ def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, 
         ("Kurtosis fake (median)", "kurt_fake", ".3f"),
         ("Kurtosis MAE", "kurt_mae", ".3f"),
     ]
+    cp = cp_cfg or CHANNEL_PARAM_DEFAULTS
+    labels = {"ripple_db": ("Ripple |H(f)| (dB)", ".2f"),
+              "fade_frac": (f"Fade frac. (-{cp['fade_threshold_db']:g} dB)", ".4f"),
+              "se": (f"SE @{cp['se_snr_db']:g}dB (b/s/Hz)", ".3f"),
+              "bc_inst_mhz": (f"Bc{int(cp['bc_threshold'] * 100)} per ch. (MHz)", ".4f"),
+              "delay_window_ns": (f"Delay window {cp['delay_window_pct']:g}% (ns)", ".1f"),
+              "n_taps_energy": (f"Taps {cp['delay_window_pct']:g}% energy", ".1f")}
+    for thr in delay_thresholds:
+        if thr is not None:
+            labels[f"delay_interval{threshold_tag(thr)}"] = (f"Delay interval@{thr:g}dB (ns)", ".1f")
+    for key, (lbl, fmt) in labels.items():
+        rows += [(f"{lbl} real", f"{key}_real", fmt), (f"{lbl} fake", f"{key}_fake", fmt),
+                 (f"{lbl} KS", f"{key}_ks", ".3f")]
+        if key == "se":
+            rows += [(f"{lbl} out10% real", "se_out10_real", fmt),
+                     (f"{lbl} out10% fake", "se_out10_fake", fmt)]
+    rows += [
+    ]
     for thr in thresholds:
         t = int(thr * 100)
         rows += [(f"Bc{t} real (MHz)", f"bc{t}_real_mhz", ".4f"),
@@ -631,7 +758,7 @@ def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, 
         mod = key.split("_")[1]
         rows.append((f"BER {mod} |dlog10|", key, ".3f"))
 
-    w = 24
+    w = 34
     lines = ["===== EVALUACIÓN DE MODELOS GENERATIVOS =====", *cfg_info, ""]
     lines.append(f"{'Metric':<{w}}" + "".join(f"{MODEL_LABELS[m]:>12}" for m in models))
     lines.append("-" * (w + 12 * len(models)))
@@ -642,6 +769,9 @@ def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, 
               "  a su media en la banda). Kurtosis: curtosis en exceso de la parte difusa (h - media del tap), media",
               "  de Re e Im (0 = gaussiana); 'peak tap' = tap del pico del PDP; median/MAE = resto de taps a menos",
               "  de 30 dB del pico.",
+              "Parámetros por canal (mediana real/generada y KS): rizado max/min de |H(f)|^2; fracción de banda en",
+              "  fade; eficiencia espectral E_f{log2(1+SNR|H|^2)} y su percentil 10 (outage 10%); Bc por canal (DFT",
+              "  del perfil del propio canal); ventana e intervalo de retardo (ITU-R P.1407); taps con X% energía.",
               "KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).",
               "t-test p > 0.05: no hay diferencia significativa entre las medias."]
     txt = "\n".join(lines)
@@ -690,6 +820,7 @@ def main():
     num_samples = ev["num_samples"]
     thresholds = ev.get("coherence_thresholds", [0.9, 0.5])
     # Umbrales del retardo medio / RMS delay spread (dB bajo el pico de cada canal); null = sin umbral
+    channel_params = {**CHANNEL_PARAM_DEFAULTS, **ev.get("channel_params", {})}
     delay_thresholds = ev.get("delay_thresholds_db", [None, 40, 30, 25, 20])
     if None not in delay_thresholds:
         delay_thresholds = [None] + list(delay_thresholds)
@@ -763,9 +894,9 @@ def main():
     mag_db_grid = np.linspace(-80, 20 * np.log10(max_mag + 1e-12), 500)
 
     print("\nCalculando métricas ...")
-    real_st = channel_stats(h_real, dt, mag_grid, mag_db_grid, seed=seed, delay_thresholds=delay_thresholds)
-    fake_st = {mt: channel_stats(h, dt, mag_grid, mag_db_grid, seed=seed, delay_thresholds=delay_thresholds)
-               for mt, h in fake.items()}
+    kw = dict(seed=seed, delay_thresholds=delay_thresholds, channel_params=channel_params)
+    real_st = channel_stats(h_real, dt, mag_grid, mag_db_grid, **kw)
+    fake_st = {mt: channel_stats(h, dt, mag_grid, mag_db_grid, **kw) for mt, h in fake.items()}
     df = 1 / dt / L
     results = {mt: compare(real_st, st, df, thresholds) for mt, st in fake_st.items()}
 
@@ -791,7 +922,8 @@ def main():
     cfg_info = [f"Datos reales: {config['data']['path']}, subconjunto '{subset}' ({N_real} canales, L={L})",
                 f"Muestras generadas por modelo: {num_samples}",
                 f"Periodo de muestreo: {dt * 1e9:.3f} ns"]
-    write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, delay_thresholds)
+    write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, delay_thresholds,
+                 channel_params)
 
     ex_rng = np.random.default_rng(seed)
     examples = (h_real[ex_rng.choice(N_real, 4, replace=False)], {mt: h[:4] for mt, h in fake.items()})

@@ -72,6 +72,11 @@ python evaluation_models/evaluation.py --reuse-generated   # rehace figuras con 
   `evaluation.delay_thresholds_db` (dB bajo el pico de cada canal; por defecto 40, 30, 25 y 20 dB).
   Tabla: filas `@X dB`; figuras `fig_rms_delay_th<X>dB`, `fig_mean_delay_th<X>dB` y
   `fig_rms_delay_cdf_thresholds` (CDF con todos los umbrales).
+- Métricas de orden superior (no dependen solo de la covarianza): profundidad del nulo y ganancia de
+  ruido ZF (`fig_null_depth`), curtosis de la parte difusa por tap (`fig_kurtosis`) y parámetros por
+  canal con su CDF (`fig_channel_params`): rizado de |H(f)|, fracción de banda en fade, eficiencia
+  espectral (media y outage 10%), Bc por canal, ventana e intervalo de retardo (ITU-R P.1407) y taps
+  con el 90% de la energía. Umbrales en `evaluation.channel_params`.
 - Además de los modelos generativos se evalúan dos modelos estadísticos clásicos de referencia
   (`evaluation_models/baselines.py`), ajustados con `train`: **TDL-Rice** (taps independientes,
   Rice con la media y la potencia de cada tap; WSSUS) y **Gaussian** (vector gaussiano con la
