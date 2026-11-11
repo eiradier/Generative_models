@@ -42,10 +42,15 @@ sys.path.insert(0, THIS_DIR)
 sys.path.insert(0, REPO_ROOT)
 
 from BER import ber_curve, ber_theory_awgn, ber_theory_rayleigh  # noqa: E402
+from baselines import BASELINES, generate_baseline  # noqa: E402
 from train_models.normalization import TapScaler  # noqa: E402
 
-MODEL_LABELS = {"gan": "GAN", "dcgan": "DCGAN", "wgan": "WGAN", "ddpm": "DDPM", "ddim": "DDIM"}
-COLORS = {"gan": "red", "dcgan": "blue", "wgan": "purple", "ddpm": "green", "ddim": "orange"}
+MODEL_LABELS = {"gan": "GAN", "dcgan": "DCGAN", "wgan": "WGAN", "ddpm": "DDPM", "ddim": "DDIM",
+                "tdl": "TDL-Rice", "gauss": "Gaussian"}
+COLORS = {"gan": "red", "dcgan": "blue", "wgan": "purple", "ddpm": "green", "ddim": "orange",
+          "tdl": "teal", "gauss": "saddlebrown"}
+# Modelos clásicos de referencia (baselines.py) en línea de puntos y rayas
+LINESTYLES = {"tdl": "-.", "gauss": "-."}
 
 MODULES = {
     "gan": "train_models.train_GAN_Conv1D",
@@ -370,7 +375,8 @@ def _save(fig, save_dir, name):
 
 def _plot_curves(ax, x, real_y, fakes, key, transform=lambda v: v):
     for name, st in fakes.items():
-        ax.plot(x, transform(st[key]), label=MODEL_LABELS[name], color=COLORS[name], lw=1.3, ls="--")
+        ax.plot(x, transform(st[key]), label=MODEL_LABELS[name], color=COLORS[name], lw=1.3,
+                ls=LINESTYLES.get(name, "--"))
     ax.plot(x, transform(real_y), label="Real", color="black", lw=2.0)
 
 
@@ -403,7 +409,7 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
     _style(ax, r"Signal Magnitude $|h[n]|$", r"$P(|h[n]| \leq x)$", loc="lower right")
     axins = ax.inset_axes([0.3, 0.3, 0.40, 0.35])
     for name, st in fakes.items():
-        axins.plot(x, st["mag_cdf"], color=COLORS[name], lw=1.1, ls="--")
+        axins.plot(x, st["mag_cdf"], color=COLORS[name], lw=1.1, ls=LINESTYLES.get(name, "--"))
     axins.plot(x, real["mag_cdf"], color="black", lw=1.5)
     axins.set_xlim(x[int(len(x) * 0.04)], x[int(len(x) * 0.12)])
     axins.set_ylim(0.90, 1.02)
@@ -447,7 +453,8 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
         xs = np.linspace(np.percentile(allv, 0.5), np.percentile(allv, 99.5), 400)
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
         for n, st in fakes.items():
-            axes[0].plot(xs, gaussian_kde(st[key] * 1e9)(xs), color=COLORS[n], ls="--", lw=1.3,
+            axes[0].plot(xs, gaussian_kde(st[key] * 1e9)(xs), color=COLORS[n], ls=LINESTYLES.get(n, "--"),
+                         lw=1.3,
                          label=MODEL_LABELS[n])
         axes[0].plot(xs, gaussian_kde(real[key] * 1e9)(xs), color="black", lw=2, label="Real")
         _style(axes[0], f"{label} (ns)", "Probability Density")
@@ -464,7 +471,7 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
         key = f"rms_delay{threshold_tag(thr)}_all"
         for n, st in fakes.items():
             v = np.sort(st[key]) * 1e9
-            ax.plot(v, np.arange(1, len(v) + 1) / len(v), color=COLORS[n], ls="--", lw=1.3,
+            ax.plot(v, np.arange(1, len(v) + 1) / len(v), color=COLORS[n], ls=LINESTYLES.get(n, "--"), lw=1.3,
                     label=MODEL_LABELS[n])
         v = np.sort(real[key]) * 1e9
         ax.plot(v, np.arange(1, len(v) + 1) / len(v), color="black", lw=2, label="Real")
@@ -483,7 +490,8 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
         for n, b in res.items():
             if n == "real" or n.startswith("_"):
                 continue
-            ax.semilogy(snr, np.where(b > 0, b, np.nan), color=COLORS[n], ls="--", marker="x", ms=5,
+            ax.semilogy(snr, np.where(b > 0, b, np.nan), color=COLORS[n], ls=LINESTYLES.get(n, "--"),
+                        marker="x", ms=5,
                         lw=1.3, label=MODEL_LABELS[n])
         ax.semilogy(snr, np.where(res["real"] > 0, res["real"], np.nan), color="black", marker="o",
                     ms=5, lw=2, label="Real")
@@ -623,7 +631,8 @@ def main():
     print(f"Periodo de muestreo de los taps: {dt * 1e9:.3f} ns (fs = {1 / dt / 1e6:.4f} MHz)")
 
     # Datos reales
-    real_data = np.load(repo_path(config["data"]["path"])).astype(np.float32)
+    all_data = np.load(repo_path(config["data"]["path"])).astype(np.float32)
+    real_data = all_data
     subset = args.subset or config["data"].get("subset", "all")
     if subset != "all":
         split_file = config["data"].get("split_file")
@@ -631,6 +640,9 @@ def main():
             raise ValueError("data.subset requiere data.split_file en la configuración")
         real_data = real_data[np.load(repo_path(split_file))[subset]]
     print(f"Referencia real: subconjunto '{subset}' ({len(real_data)} canales)")
+    # Datos con los que se ajustan los modelos clásicos (baselines.py): train si hay separación
+    split_file = config["data"].get("split_file")
+    train_data = all_data[np.load(repo_path(split_file))["train"]] if split_file else all_data
     N_real, _, L = real_data.shape
     assert L == config["data"]["signal_length"], "signal_length no coincide con el dataset"
     h_real = to_complex(real_data)
@@ -642,9 +654,15 @@ def main():
     fake = {}
     for mt in models:
         out_path = os.path.join(gen_dir, f"h_generated_{mt}.npy")
-        mcfg = config["models"][mt]
-        ckpt = repo_path(mcfg["checkpoint"])
-        if args.reuse_generated and os.path.exists(out_path):
+        mcfg = config["models"].get(mt, {})
+        ckpt = repo_path(mcfg["checkpoint"]) if "checkpoint" in mcfg else ""
+        if mt in BASELINES:
+            # Modelo clásico: se ajusta con train (es rápido, siempre se regenera)
+            print(f"[{MODEL_LABELS[mt]}] ajustando con train ({len(train_data)} canales), "
+                  f"generando {num_samples}")
+            data = generate_baseline(mt, train_data, num_samples, seed)
+            np.save(out_path, data)
+        elif args.reuse_generated and os.path.exists(out_path):
             print(f"[{MODEL_LABELS[mt]}] reutilizando {out_path}")
             data = np.load(out_path)
         elif os.path.exists(ckpt):

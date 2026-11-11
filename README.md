@@ -72,5 +72,21 @@ python evaluation_models/evaluation.py --reuse-generated   # rehace figuras con 
   `evaluation.delay_thresholds_db` (dB bajo el pico de cada canal; por defecto 40, 30, 25 y 20 dB).
   Tabla: filas `@X dB`; figuras `fig_rms_delay_th<X>dB`, `fig_mean_delay_th<X>dB` y
   `fig_rms_delay_cdf_thresholds` (CDF con todos los umbrales).
+- Además de los modelos generativos se evalúan dos modelos estadísticos clásicos de referencia
+  (`evaluation_models/baselines.py`), ajustados con `train`: **TDL-Rice** (taps independientes,
+  Rice con la media y la potencia de cada tap; WSSUS) y **Gaussian** (vector gaussiano con la
+  covarianza completa entre taps). Se activan con `tdl` y `gauss` en `evaluation.models`.
 - Salidas en `paths.save_dir`: canales generados (`generated/`), `metrics_summary.txt`,
   `ber_table.txt`, `metrics.pkl` y figuras (PDF y PNG).
+
+Análisis complementarios (después de `evaluation.py`, usan los canales de `generated/`):
+
+```bash
+python evaluation_models/memorization.py   # ¿copian los modelos el entrenamiento? (vecino más próximo)
+python evaluation_models/model_costs.py    # parámetros, tiempo de generación y de entrenamiento
+```
+
+- `memorization.py`: distancia de cada canal generado al canal de train más cercano, comparada con
+  la de los canales reales de test (`memorization.txt`, `fig_memorization_nn`).
+- `model_costs.py`: lee los tiempos de entrenamiento de `training_log.json` en `paths.save_dir`
+  (`model_costs.txt`).

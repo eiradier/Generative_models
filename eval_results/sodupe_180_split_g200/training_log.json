@@ -1,0 +1,12 @@
+{
+  "gan":   {"epochs": 75, "best_epoch": 35, "train_min": 6.6},
+  "dcgan": {"epochs": 81, "best_epoch": 41, "train_min": 9.0},
+  "wgan":  {"epochs": 63, "best_epoch": 23, "train_min": 100.9},
+  "ddpm":  {"epochs": 74, "best_epoch": 44, "train_min": 23.7},
+  "ddim":  {"epochs": 67, "best_epoch": 37, "train_min": 21.3},
+  "_notes": [
+    "Entrenamiento en CPU (4 núcleos), con early stopping (paciencia 40 épocas en las GAN, 30 en difusión).",
+    "Tiempos de los logs (logs/train_<modelo>.log); el WGAN se interrumpió y reanudó: 20.0 + 80.9 min.",
+    "Las GAN evalúan la calidad de 2000 canales generados en cada época; la difusión, la pérdida de validación."
+  ]
+}
