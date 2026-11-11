@@ -1,0 +1,15 @@
+Coste computacional (Intel(R) Xeon(R) Processor @ 2.10GHz (4 hilos), PyTorch 2.15.0+cu132)
+Generación medida con 500 canales; entrenamiento: training_log.json
+
+Modelo        Parámetros    ms/canal  s/1000 can.   Épocas  Mejor ép.  Entren. (min)
+GAN              249,762        0.07          0.1       75         35            6.6
+DCGAN            315,618        0.13          0.1       81         41            9.0
+WGAN             592,578        0.17          0.2       63         23          100.9
+DDPM             647,682      586.03        586.0       74         44           23.7
+DDIM             647,682      141.86        141.9       67         37           21.3
+TDL-Rice               -        0.13          0.1        -          -              -
+Gaussian               -        0.22          0.2        -          -              -
+
+Entrenamiento en CPU (4 núcleos), con early stopping (paciencia 40 épocas en las GAN, 30 en difusión).
+Tiempos de los logs (logs/train_<modelo>.log); el WGAN se interrumpió y reanudó: 20.0 + 80.9 min.
+Las GAN evalúan la calidad de 2000 canales generados en cada época; la difusión, la pérdida de validación.

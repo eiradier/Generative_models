@@ -1,0 +1,16 @@
+Distancia al canal de entrenamiento más cercano (vecino más próximo)
+norm: espacio normalizado por tap, / sqrt(2L) | rel: ||g - t|| / ||t|| en el espacio original
+Real train: canales de train frente al resto de train sin sus vecinos (±200 medidas)
+ratio = mediana / mediana de Real train (~1 o mayor: no memoriza; << 1: copia train)
+copias % = canales con distancia menor que el percentil 1 de Real train (1% por definición)
+
+          Modelo    norm mediana         norm p5      norm ratio   norm copias %     rel mediana          rel p5       rel ratio    rel copias %
+      Real train          0.1299          0.0912            1.00            1.00          0.3812          0.2289            1.00            1.00
+       Real test          0.1325          0.0896            1.02            0.89          0.3133          0.2652            0.82            0.00
+             GAN          0.1659          0.1302            1.28            0.00          0.4025          0.2777            1.06            0.13
+           DCGAN          0.1626          0.1263            1.25            0.00          0.3837          0.2549            1.01            0.30
+            WGAN          0.1526          0.1243            1.17            0.00          0.3933          0.2728            1.03            0.07
+            DDPM          0.1443          0.1097            1.11            0.00          0.2527          0.1549            0.66           21.27
+            DDIM          0.1413          0.1112            1.09            0.00          0.3069          0.1930            0.81            6.77
+        TDL-Rice          0.2365          0.2003            1.82            0.00          0.4988          0.3912            1.31            0.00
+        Gaussian          0.1465          0.1217            1.13            0.00          0.4320          0.3249            1.13            0.03
