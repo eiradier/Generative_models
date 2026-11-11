@@ -136,16 +136,31 @@ def generate_signals(model_type, model_cfg, num_samples, L, device, real_data, s
         unet.load_state_dict(ckpt)
         unet.eval()
         ddpm = m.DDPM(unet, T=model_cfg["T"]).to(device)
+        clip_x0 = model_cfg.get("clip_x0", True)
+        betas, abar = ddpm.betas, ddpm.alphas_cumprod
+        abar_prev = torch.cat([torch.ones(1, device=abar.device), abar[:-1]])
         for i in range(0, num_samples, batch_size):
             b = min(batch_size, num_samples - i)
             x = torch.randn(b, 2, L, device=device, generator=g)
             for t in reversed(range(ddpm.T)):
                 t_batch = torch.full((b,), t, device=device, dtype=torch.long)
                 eps = ddpm.model(x, t_batch)
-                beta = ddpm.betas[t]
-                x = (x - beta / torch.sqrt(1 - ddpm.alphas_cumprod[t]) * eps) / torch.sqrt(1 - beta)
+                if clip_x0:
+                    # Muestreo DDPM estándar con x0 recortado ("clip_denoised"): se estima x0, se
+                    # recorta al rango de los datos y se usa la media del posterior q(x_{t-1}|x_t,x0).
+                    # Sin el recorte, con el schedule coseno (beta_T ~ 0.999) el primer paso divide
+                    # por sqrt(1 - beta) ~ 0.03 y amplifica el error del modelo.
+                    x0 = (x - torch.sqrt(1 - abar[t]) * eps) / torch.sqrt(abar[t])
+                    x0 = torch.clamp(x0, -1, 1)
+                    mean = (betas[t] * torch.sqrt(abar_prev[t]) / (1 - abar[t])) * x0 \
+                        + ((1 - abar_prev[t]) * torch.sqrt(1 - betas[t]) / (1 - abar[t])) * x
+                    var = betas[t] * (1 - abar_prev[t]) / (1 - abar[t])
+                else:
+                    mean = (x - betas[t] / torch.sqrt(1 - abar[t]) * eps) / torch.sqrt(1 - betas[t])
+                    var = betas[t]
+                x = mean
                 if t > 0:
-                    x = x + torch.sqrt(beta) * torch.randn(x.shape, device=device, generator=g)
+                    x = x + torch.sqrt(var) * torch.randn(x.shape, device=device, generator=g)
             out.append(torch.clamp(x, -1, 1).cpu().numpy())
 
     elif model_type == "ddim":
