@@ -30,7 +30,7 @@
       "checkpoint": "checkpoints/sodupe_180_split/DDIM/best_model.pth",
       "T": 1000,
       "time_emb_dim": 64,
-      "sampling_steps": 100,
+      "sampling_steps": 250,
       "eta": 0.0
     }
   },
