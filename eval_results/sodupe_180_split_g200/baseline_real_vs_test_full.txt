@@ -1,0 +1,31 @@
+Referencia "real contra real" con las mismas funciones que evaluation.py: 3000 canales de train
+(al azar, semilla 42) y los 1100 de val, tratados como si fueran "generados", frente a test (900).
+Es el error que tendría un modelo que reprodujera exactamente la distribución de train/val.
+
+metric                        train vs test  val vs test
+pdp_mae_db                           1.5569       1.5233
+mag_ks                               0.0787       0.0806
+mean_delay_ks                        0.2938       0.3510
+rms_delay_ks                         0.1944       0.2483
+rms_delay_th40dB_ks                  0.1240       0.2878
+rms_delay_th30dB_ks                  0.2233       0.2759
+rms_delay_th25dB_ks                  0.1784       0.2269
+rms_delay_th20dB_ks                  0.1074       0.1985
+null_depth_db_ks                     0.1858       0.2661
+zf_gain_db_ks                        0.1394       0.3845
+kurt_mae                             0.8332       0.8786
+ripple_db_ks                         0.1954       0.2424
+fade_frac_ks                         0.0883       0.3692
+se_ks                                0.1181       0.4018
+bc_inst_mhz_ks                       0.2017       0.2546
+delay_window_ns_ks                   0.1291       0.4193
+n_taps_energy_ks                     0.0589       0.1244
+delay_interval_th40dB_ks             0.1323       0.1237
+delay_interval_th30dB_ks             0.1199       0.1854
+delay_interval_th25dB_ks             0.1757       0.2012
+delay_interval_th20dB_ks             0.1951       0.0847
+freq_corr_mae                        0.0720       0.0475
+bc90_err_mhz                         0.0123       0.0007
+bc50_err_mhz                         0.3665       0.0991
+mean_delay_mae_ns                    9.9730       5.0366
+rms_delay_mae_ns                    59.8696      67.6567
