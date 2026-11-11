@@ -1,0 +1,7 @@
+Referencia "real contra real": canales medidos de train (3000 al azar) y val comparados con test (900),
+con las mismas métricas que los modelos. Indica cuánto difiere test por la propia variabilidad del canal.
+
+            PDP dB  |h| KS     sin umbral           40dB           30dB           25dB           20dB
+train vs test   1.560   0.082    0.206/0.290    0.127/0.282    0.209/0.259    0.168/0.255    0.105/0.257
+val vs test   1.523   0.085    0.248/0.351    0.288/0.349    0.276/0.274    0.227/0.255    0.198/0.258
+celdas: KS RMS delay / KS retardo medio
