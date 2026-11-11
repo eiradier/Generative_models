@@ -18,7 +18,8 @@ python preprocess_dataset.py
 - Genera `data/datos_loopback/ch_sodupe_180_time_L200.npy` (N, 2, L) y la figura de verificación.
 - Genera `..._split.npz` con la separación entrenamiento / validación / test (80/10/10). Los canales
   consecutivos están muy correlados, así que se reparten **bloques** de 500 canales y se descartan
-  100 canales en cada frontera entre conjuntos (`--split-block`, `--split-gap`).
+  200 canales en cada frontera entre conjuntos (`--split-block`, `--split-gap`): el canal tarda
+  ~150-200 medidas en descorrelarse, así que no hay fuga entre conjuntos.
 
 ## 2. Entrenamiento
 
@@ -67,5 +68,9 @@ python evaluation_models/evaluation.py --reuse-generated   # rehace figuras con 
 - Configuración: `evaluation_models/evaluation_config.json` (checkpoints, referencia real
   `data.subset`, parámetros de muestreo, SNR de la BER).
 - Para resultados finales usa `--subset test` (los hiperparámetros se eligen con `val`).
+- El retardo medio y el RMS delay spread se calculan sin umbral y con los umbrales de
+  `evaluation.delay_thresholds_db` (dB bajo el pico de cada canal; por defecto 40, 30, 25 y 20 dB).
+  Tabla: filas `@X dB`; figuras `fig_rms_delay_th<X>dB`, `fig_mean_delay_th<X>dB` y
+  `fig_rms_delay_cdf_thresholds` (CDF con todos los umbrales).
 - Salidas en `paths.save_dir`: canales generados (`generated/`), `metrics_summary.txt`,
   `ber_table.txt`, `metrics.pkl` y figuras (PDF y PNG).

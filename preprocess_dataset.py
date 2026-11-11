@@ -245,7 +245,7 @@ def verify_preprocessing(H_full, dataset, L, save_dir="data/datos_loopback", kee
     print(f"Figura de verificación guardada en: {out}")
 
 
-def make_block_split(n, block=500, fractions=(0.8, 0.1, 0.1), gap=100, seed=42):
+def make_block_split(n, block=500, fractions=(0.8, 0.1, 0.1), gap=200, seed=42):
     """
     Separa n canales consecutivos en el tiempo en entrenamiento / validación / test.
 
@@ -438,7 +438,7 @@ if __name__ == "__main__":
                              "Usa un valor muy negativo (p. ej. -100) para no descartar ninguno")
     parser.add_argument("--split-block", type=int, default=500,
                         help="Tamaño de los bloques de canales consecutivos para separar train/val/test")
-    parser.add_argument("--split-gap", type=int, default=100,
+    parser.add_argument("--split-gap", type=int, default=200,
                         help="Canales descartados en cada frontera entre conjuntos distintos")
     parser.add_argument("--no-plots", action="store_true", help="No generar las figuras de análisis")
     args = parser.parse_args()

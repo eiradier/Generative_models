@@ -13,21 +13,21 @@
   },
   "models": {
     "gan": {
-      "checkpoint": "checkpoints/sodupe_180_split/GAN_Conv1D/best_model.pth"
+      "checkpoint": "checkpoints/sodupe_180_split_g200/GAN_Conv1D/best_model.pth"
     },
     "dcgan": {
-      "checkpoint": "checkpoints/sodupe_180_split/DCGAN_Conv1D/model_best.pth"
+      "checkpoint": "checkpoints/sodupe_180_split_g200/DCGAN_Conv1D/model_best.pth"
     },
     "wgan": {
-      "checkpoint": "checkpoints/sodupe_180_split/WGAN_Conv1D/best_model.pth"
+      "checkpoint": "checkpoints/sodupe_180_split_g200/WGAN_Conv1D/best_model.pth"
     },
     "ddpm": {
-      "checkpoint": "checkpoints/sodupe_180_split/DDPM/best_model.pth",
+      "checkpoint": "checkpoints/sodupe_180_split_g200/DDPM/best_model.pth",
       "T": 1000,
       "time_emb_dim": 64
     },
     "ddim": {
-      "checkpoint": "checkpoints/sodupe_180_split/DDIM/best_model.pth",
+      "checkpoint": "checkpoints/sodupe_180_split_g200/DDIM/best_model.pth",
       "T": 1000,
       "time_emb_dim": 64,
       "sampling_steps": 250,
@@ -47,6 +47,13 @@
     "coherence_thresholds": [
       0.9,
       0.5
+    ],
+    "delay_thresholds_db": [
+      null,
+      40,
+      30,
+      25,
+      20
     ]
   },
   "ber": {
@@ -77,6 +84,6 @@
     "n_ofdm": 1
   },
   "paths": {
-    "save_dir": "eval_results/sodupe_180_split"
+    "save_dir": "eval_results/sodupe_180_split_g200"
   }
 }

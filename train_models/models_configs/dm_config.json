@@ -27,7 +27,7 @@
     "grad_clip": 1.0
   },
   "paths": {
-    "save_dir": "checkpoints/sodupe_180_split",
+    "save_dir": "checkpoints/sodupe_180_split_g200",
     "best_model": "best_model.pth"
   }
 }

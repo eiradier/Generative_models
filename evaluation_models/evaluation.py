@@ -4,9 +4,10 @@ las medidas reales de loopback.
 
 Para cada modelo:
   1. Genera `num_samples` canales con el checkpoint entrenado (o reutiliza los ya generados).
-  2. Calcula métricas frente al dataset real: PDP, retardo medio y RMS delay spread, distribución
-     de |h|, potencia media de la respuesta en frecuencia, función de correlación en frecuencia,
-     ancho de banda de coherencia y curvas de BER (QPSK/16QAM con ZF).
+  2. Calcula métricas frente al dataset real: PDP, retardo medio y RMS delay spread (sin umbral y
+     con umbrales respecto al pico de cada canal, evaluation.delay_thresholds_db), distribución de |h|,
+     potencia media de la respuesta en frecuencia, función de correlación en frecuencia, ancho de
+     banda de coherencia y curvas de BER (QPSK/16QAM con ZF).
 Después genera las figuras comparativas (todos los modelos juntos, estilo artículo) y las tablas.
 
 Uso (desde la raíz del repositorio):
@@ -187,15 +188,50 @@ def generate_signals(model_type, model_cfg, num_samples, L, device, real_data, s
 
 # Métricas
 
-def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0):
-    """Estadísticas de un conjunto de canales complejos h (N, L)."""
+def delay_moments(p, tau, threshold_db=None):
+    """
+    Retardo medio y RMS delay spread de cada canal (p: |h|^2, (N, L)).
+    threshold_db: si se indica, solo cuentan los taps con potencia >= pico del canal - threshold_db
+    (el resto se pone a 0). None = todos los taps (sin umbral).
+    """
+    if threshold_db is not None:
+        p = np.where(p >= p.max(axis=1, keepdims=True) * 10 ** (-threshold_db / 10), p, 0.0)
+    e = p.sum(axis=1) + 1e-30
+    mean_delay = (p * tau).sum(axis=1) / e
+    rms_delay = np.sqrt((p * (tau[None] - mean_delay[:, None]) ** 2).sum(axis=1) / e)
+    return mean_delay, rms_delay
+
+
+def threshold_tag(thr):
+    """Sufijo de las claves/figuras para cada umbral del delay spread ('' = sin umbral)."""
+    return "" if thr is None else f"_th{thr:g}dB"
+
+
+def threshold_label(thr):
+    return "sin umbral" if thr is None else f"umbral {thr:g} dB"
+
+
+def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0, delay_thresholds=(None,)):
+    """
+    Estadísticas de un conjunto de canales complejos h (N, L).
+    delay_thresholds: umbrales (dB bajo el pico de cada canal) para el retardo medio y el RMS delay
+    spread; None = sin umbral. Las claves sin sufijo (mean_delay, rms_delay, ...) son siempre las de
+    sin umbral; las demás llevan el sufijo threshold_tag(thr).
+    """
     N, L = h.shape
     p = np.abs(h) ** 2
     energy = p.sum(axis=1)
     tau = np.arange(L) * dt
 
-    mean_delay = (p * tau).sum(axis=1) / (energy + 1e-30)
-    rms_delay = np.sqrt((p * (tau[None] - mean_delay[:, None]) ** 2).sum(axis=1) / (energy + 1e-30))
+    mean_delay, rms_delay = delay_moments(p, tau)
+    delays = {}
+    for thr in delay_thresholds:
+        if thr is None:
+            continue
+        md, rd = delay_moments(p, tau, thr)
+        tag = threshold_tag(thr)
+        delays.update({f"mean_delay{tag}_all": md, f"rms_delay{tag}_all": rd,
+                       f"mean_delay{tag}": float(md.mean()), f"rms_delay{tag}": float(rd.mean())})
 
     pdp = p.mean(axis=0)
 
@@ -231,6 +267,8 @@ def channel_stats(h, dt, mag_grid, mag_db_grid, kde_points=50000, seed=0):
         "mag_cdf": cdf, "mag_cdf_db": cdf_db,
         "mag_kde": kde, "mag_kde_db": kde_db,
         "_mag_sub": mag[sub],
+        "delay_thresholds": list(delay_thresholds),
+        **delays,
     }
 
 
@@ -256,7 +294,8 @@ def compare(real, fake, df, thresholds):
 
     m["energy_ratio_db"] = float(10 * np.log10(fake["energy"].mean() / real["energy"].mean()))
 
-    for k in ("mean_delay", "rms_delay"):
+    tags = [threshold_tag(t) for t in real.get("delay_thresholds", [None]) if t is not None]
+    for k in [f"{base}{tag}" for tag in [""] + tags for base in ("mean_delay", "rms_delay")]:
         m[f"{k}_real_ns"] = real[k] * 1e9
         m[f"{k}_fake_ns"] = fake[k] * 1e9
         m[f"{k}_mae_ns"] = abs(real[k] - fake[k]) * 1e9
@@ -395,9 +434,15 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
     _style(ax, r"Frequency separation $\Delta f$ (MHz)", r"$|R_H(\Delta f)|$ (normalized)")
     _save(fig, save_dir, "fig_frequency_correlation")
 
-    # Distribución del RMS delay spread y del retardo medio
-    for key, label, name in (("rms_delay_all", "RMS delay spread", "fig_rms_delay"),
-                             ("mean_delay_all", "Mean delay", "fig_mean_delay")):
+    # Distribución del RMS delay spread y del retardo medio, para cada umbral
+    delay_thresholds = real.get("delay_thresholds", [None])
+    delay_figs = []
+    for thr in delay_thresholds:
+        tag = threshold_tag(thr)
+        suffix = "" if thr is None else f" (threshold {thr:g} dB)"
+        delay_figs += [(f"rms_delay{tag}_all", "RMS delay spread" + suffix, f"fig_rms_delay{tag}"),
+                       (f"mean_delay{tag}_all", "Mean delay" + suffix, f"fig_mean_delay{tag}")]
+    for key, label, name in delay_figs:
         allv = np.concatenate([real[key]] + [st[key] for st in fakes.values()]) * 1e9
         xs = np.linspace(np.percentile(allv, 0.5), np.percentile(allv, 99.5), 400)
         fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -411,6 +456,22 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
                         tick_labels=names, showfliers=False)
         _style(axes[1], "", f"{label} (ns)", legend=False)
         _save(fig, save_dir, name)
+
+    # CDF del RMS delay spread con todos los umbrales (una columna por umbral)
+    nthr = len(delay_thresholds)
+    fig, axes = plt.subplots(1, nthr, figsize=(4.2 * nthr, 4.2), squeeze=False)
+    for ax, thr in zip(axes[0], delay_thresholds):
+        key = f"rms_delay{threshold_tag(thr)}_all"
+        for n, st in fakes.items():
+            v = np.sort(st[key]) * 1e9
+            ax.plot(v, np.arange(1, len(v) + 1) / len(v), color=COLORS[n], ls="--", lw=1.3,
+                    label=MODEL_LABELS[n])
+        v = np.sort(real[key]) * 1e9
+        ax.plot(v, np.arange(1, len(v) + 1) / len(v), color="black", lw=2, label="Real")
+        ax.set_title("No threshold" if thr is None else f"Threshold {thr:g} dB", fontsize=11)
+        _style(ax, "RMS delay spread (ns)", "CDF" if ax is axes[0][0] else "",
+               legend=ax is axes[0][0], loc="lower right")
+    _save(fig, save_dir, "fig_rms_delay_cdf_thresholds")
 
     # Curvas de BER
     snr = np.array(ber_cfg["snr_db"], dtype=float)
@@ -449,7 +510,7 @@ def plot_all(save_dir, real, fakes, grids, dt, thresholds, ber_results, ber_cfg,
 
 # Tablas
 
-def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds):
+def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, delay_thresholds=(None,)):
     models = list(results.keys())
     rows = [
         ("PDP MAE (lin)", "pdp_mae", ".3e"), ("PDP MSE (lin)", "pdp_mse", ".3e"),
@@ -465,6 +526,19 @@ def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds):
         ("RMS delay MAE (ns)", "rms_delay_mae_ns", ".2f"),
         ("RMS delay KS", "rms_delay_ks", ".3f"),
         ("RMS delay t-test p", "rms_delay_ttest_p", ".2e"),
+    ]
+    for thr in delay_thresholds:
+        if thr is None:
+            continue
+        tag, t = threshold_tag(thr), f"@{thr:g}dB"
+        rows += [(f"Mean delay{t} real (ns)", f"mean_delay{tag}_real_ns", ".2f"),
+                 (f"Mean delay{t} fake (ns)", f"mean_delay{tag}_fake_ns", ".2f"),
+                 (f"Mean delay{t} KS", f"mean_delay{tag}_ks", ".3f"),
+                 (f"RMS delay{t} real (ns)", f"rms_delay{tag}_real_ns", ".2f"),
+                 (f"RMS delay{t} fake (ns)", f"rms_delay{tag}_fake_ns", ".2f"),
+                 (f"RMS delay{t} MAE (ns)", f"rms_delay{tag}_mae_ns", ".2f"),
+                 (f"RMS delay{t} KS", f"rms_delay{tag}_ks", ".3f")]
+    rows += [
         ("Std per tap MAE", "std_tap_mae", ".3e"),
         ("|h| KS distance", "mag_ks", ".3f"),
         ("E|H(f)|^2 MAE (dB)", "freq_power_mae_db", ".3f"),
@@ -486,7 +560,8 @@ def write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds):
     lines.append("-" * (w + 12 * len(models)))
     for label, key, fmt in rows:
         lines.append(f"{label:<{w}}" + "".join(f"{results[m][key]:>12{fmt}}" for m in models))
-    lines += ["", "KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).",
+    lines += ["", "Retardos: 'sin sufijo' = todos los taps; '@X dB' = solo taps con potencia >= pico del canal - X dB.",
+              "KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).",
               "t-test p > 0.05: no hay diferencia significativa entre las medias."]
     txt = "\n".join(lines)
     with open(os.path.join(save_dir, "metrics_summary.txt"), "w", encoding="utf-8") as f:
@@ -533,6 +608,10 @@ def main():
     models = args.models or ev["models"]
     num_samples = ev["num_samples"]
     thresholds = ev.get("coherence_thresholds", [0.9, 0.5])
+    # Umbrales del retardo medio / RMS delay spread (dB bajo el pico de cada canal); null = sin umbral
+    delay_thresholds = ev.get("delay_thresholds_db", [None, 40, 30, 25, 20])
+    if None not in delay_thresholds:
+        delay_thresholds = [None] + list(delay_thresholds)
     ber_cfg = config.get("ber", {})
     do_ber = ber_cfg.get("enabled", True) and not args.no_ber
 
@@ -593,8 +672,9 @@ def main():
     mag_db_grid = np.linspace(-80, 20 * np.log10(max_mag + 1e-12), 500)
 
     print("\nCalculando métricas ...")
-    real_st = channel_stats(h_real, dt, mag_grid, mag_db_grid, seed=seed)
-    fake_st = {mt: channel_stats(h, dt, mag_grid, mag_db_grid, seed=seed) for mt, h in fake.items()}
+    real_st = channel_stats(h_real, dt, mag_grid, mag_db_grid, seed=seed, delay_thresholds=delay_thresholds)
+    fake_st = {mt: channel_stats(h, dt, mag_grid, mag_db_grid, seed=seed, delay_thresholds=delay_thresholds)
+               for mt, h in fake.items()}
     df = 1 / dt / L
     results = {mt: compare(real_st, st, df, thresholds) for mt, st in fake_st.items()}
 
@@ -620,7 +700,7 @@ def main():
     cfg_info = [f"Datos reales: {config['data']['path']}, subconjunto '{subset}' ({N_real} canales, L={L})",
                 f"Muestras generadas por modelo: {num_samples}",
                 f"Periodo de muestreo: {dt * 1e9:.3f} ns"]
-    write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds)
+    write_tables(save_dir, cfg_info, results, ber_results, ber_cfg, thresholds, delay_thresholds)
 
     ex_rng = np.random.default_rng(seed)
     examples = (h_real[ex_rng.choice(N_real, 4, replace=False)], {mt: h[:4] for mt, h in fake.items()})
