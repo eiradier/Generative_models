@@ -1,0 +1,123 @@
+
+===== Entrenando DDPM con checkpoints/sodupe_180_segcv/fold0/dm_config.json (semilla 42) =====
+Separación train/val: 9931 canales de entrenamiento, 1422 de validación
+Normalización por tap (escala 4.48, 0.0100% de valores recortados); scaler guardado en checkpoints/sodupe_180_segcv/fold0/DDPM
+Epoch 1 | Loss 0.172040 | Val 0.121415
+Mejor modelo guardado (loss=0.121415)
+Epoch 2 | Loss 0.116721 | Val 0.117750
+Mejor modelo guardado (loss=0.117750)
+Epoch 3 | Loss 0.115196 | Val 0.113919
+Mejor modelo guardado (loss=0.113919)
+Epoch 4 | Loss 0.114490 | Val 0.113416
+Mejor modelo guardado (loss=0.113416)
+Epoch 5 | Loss 0.112571 | Val 0.111745
+Mejor modelo guardado (loss=0.111745)
+Epoch 6 | Loss 0.110019 | Val 0.111329
+Mejor modelo guardado (loss=0.111329)
+Epoch 7 | Loss 0.110285 | Val 0.111295
+Mejor modelo guardado (loss=0.111295)
+Epoch 8 | Loss 0.109972 | Val 0.111389
+Sin mejora durante 1 epochs
+Epoch 9 | Loss 0.107039 | Val 0.110261
+Mejor modelo guardado (loss=0.110261)
+Epoch 10 | Loss 0.108543 | Val 0.111303
+Sin mejora durante 1 epochs
+Epoch 11 | Loss 0.108431 | Val 0.109958
+Mejor modelo guardado (loss=0.109958)
+Epoch 12 | Loss 0.108955 | Val 0.110365
+Sin mejora durante 1 epochs
+Epoch 13 | Loss 0.106658 | Val 0.109880
+Mejor modelo guardado (loss=0.109880)
+Epoch 14 | Loss 0.105537 | Val 0.109812
+Mejor modelo guardado (loss=0.109812)
+Epoch 15 | Loss 0.104694 | Val 0.109428
+Mejor modelo guardado (loss=0.109428)
+Epoch 16 | Loss 0.103136 | Val 0.108859
+Mejor modelo guardado (loss=0.108859)
+Epoch 17 | Loss 0.101810 | Val 0.111634
+Sin mejora durante 1 epochs
+Epoch 18 | Loss 0.101306 | Val 0.108622
+Mejor modelo guardado (loss=0.108622)
+Epoch 19 | Loss 0.102572 | Val 0.108970
+Sin mejora durante 1 epochs
+Epoch 20 | Loss 0.103980 | Val 0.108536
+Mejor modelo guardado (loss=0.108536)
+Epoch 21 | Loss 0.099326 | Val 0.109547
+Sin mejora durante 1 epochs
+Epoch 22 | Loss 0.098895 | Val 0.108871
+Sin mejora durante 2 epochs
+Epoch 23 | Loss 0.103647 | Val 0.108791
+Sin mejora durante 3 epochs
+Epoch 24 | Loss 0.100492 | Val 0.109645
+Sin mejora durante 4 epochs
+Epoch 25 | Loss 0.099884 | Val 0.109175
+Sin mejora durante 5 epochs
+Epoch 26 | Loss 0.098842 | Val 0.109367
+Sin mejora durante 6 epochs
+Epoch 27 | Loss 0.101454 | Val 0.109834
+Sin mejora durante 7 epochs
+Epoch 28 | Loss 0.099898 | Val 0.107813
+Mejor modelo guardado (loss=0.107813)
+Epoch 29 | Loss 0.097980 | Val 0.108443
+Sin mejora durante 1 epochs
+Epoch 30 | Loss 0.094889 | Val 0.108832
+Sin mejora durante 2 epochs
+Epoch 31 | Loss 0.098830 | Val 0.108027
+Sin mejora durante 3 epochs
+Epoch 32 | Loss 0.098221 | Val 0.109671
+Sin mejora durante 4 epochs
+Epoch 33 | Loss 0.098246 | Val 0.107937
+Sin mejora durante 5 epochs
+Epoch 34 | Loss 0.095872 | Val 0.108314
+Sin mejora durante 6 epochs
+Epoch 35 | Loss 0.098043 | Val 0.110310
+Sin mejora durante 7 epochs
+Epoch 36 | Loss 0.096394 | Val 0.109469
+Sin mejora durante 8 epochs
+Epoch 37 | Loss 0.098500 | Val 0.109547
+Sin mejora durante 9 epochs
+Epoch 38 | Loss 0.096306 | Val 0.109401
+Sin mejora durante 10 epochs
+Epoch 39 | Loss 0.093664 | Val 0.109419
+Sin mejora durante 11 epochs
+Epoch 40 | Loss 0.096890 | Val 0.110452
+Sin mejora durante 12 epochs
+Epoch 41 | Loss 0.095994 | Val 0.109446
+Sin mejora durante 13 epochs
+Epoch 42 | Loss 0.095155 | Val 0.108973
+Sin mejora durante 14 epochs
+Epoch 43 | Loss 0.091978 | Val 0.110319
+Sin mejora durante 15 epochs
+Epoch 44 | Loss 0.094047 | Val 0.109450
+Sin mejora durante 16 epochs
+Epoch 45 | Loss 0.093861 | Val 0.109893
+Sin mejora durante 17 epochs
+Epoch 46 | Loss 0.092929 | Val 0.110218
+Sin mejora durante 18 epochs
+Epoch 47 | Loss 0.092313 | Val 0.110666
+Sin mejora durante 19 epochs
+Epoch 48 | Loss 0.091856 | Val 0.110431
+Sin mejora durante 20 epochs
+Epoch 49 | Loss 0.095071 | Val 0.110051
+Sin mejora durante 21 epochs
+Epoch 50 | Loss 0.089091 | Val 0.110638
+Sin mejora durante 22 epochs
+Epoch 51 | Loss 0.089935 | Val 0.110039
+Sin mejora durante 23 epochs
+Epoch 52 | Loss 0.090960 | Val 0.111812
+Sin mejora durante 24 epochs
+Epoch 53 | Loss 0.091066 | Val 0.110884
+Sin mejora durante 25 epochs
+Epoch 54 | Loss 0.096081 | Val 0.110481
+Sin mejora durante 26 epochs
+Epoch 55 | Loss 0.090682 | Val 0.110742
+Sin mejora durante 27 epochs
+Epoch 56 | Loss 0.093443 | Val 0.110460
+Sin mejora durante 28 epochs
+Epoch 57 | Loss 0.091247 | Val 0.110045
+Sin mejora durante 29 epochs
+Epoch 58 | Loss 0.090983 | Val 0.111092
+Sin mejora durante 30 epochs
+Early stopping
+===== DDPM terminado en 15.0 min =====
+Generado ddpm (3000, 2, 200)
