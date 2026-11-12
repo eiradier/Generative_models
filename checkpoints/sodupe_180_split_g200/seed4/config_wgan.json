@@ -1,0 +1,43 @@
+{
+  "experiment": {
+    "name": "conv1d_wgan",
+    "seed": 4,
+    "model_type": "wgan"
+  },
+  "dataset": {
+    "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy",
+    "normalization": "per_tap",
+    "split_file": "data/datos_loopback/ch_sodupe_180_time_L200_split.npz"
+  },
+  "model": {
+    "z_dim": 64,
+    "signal_length": 200
+  },
+  "training": {
+    "epochs": 300,
+    "batch_size": 64,
+    "lr": 5e-05,
+    "gan": {
+      "betas": [
+        0.5,
+        0.999
+      ]
+    },
+    "wgan": {
+      "betas": [
+        0.0,
+        0.9
+      ],
+      "n_critic": 5,
+      "lambda_gp": 10.0,
+      "lambda_spec": 0.1,
+      "lr": 0.0001
+    },
+    "patience": 40,
+    "min_delta": 0.01
+  },
+  "paths": {
+    "save_dir": "checkpoints/sodupe_180_split_g200/seed4",
+    "best_model": "best_model.pth"
+  }
+}
