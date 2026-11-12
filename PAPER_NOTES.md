@@ -8,7 +8,12 @@ las cifras son las que se obtuvieron, pero habría que regenerarlas con un scrip
 publicarlas).
 
 Rutas relativas a la raíz del repositorio. La ronda de resultados **final** es
-`eval_results/sodupe_180_split_g200/` (checkpoints en `checkpoints/sodupe_180_split_g200/`).
+`eval_results/sodupe_180_split_g200/` (checkpoints en `checkpoints/sodupe_180_split_g200/`). Esa ronda
+se repitió con **5 semillas de entrenamiento** (42 en la carpeta raíz; 1–4 en
+`eval_results/sodupe_180_split_g200/seeds/seed{1..4}/`, checkpoints en
+`checkpoints/sodupe_180_split_g200/seed{1..4}/`) y se añadió un **bootstrap por bloques** (§4.2, §6.10).
+**Las cifras de §6.1–6.8 son de la semilla 42; para el artículo deben usarse las de §6.10**
+(media ± desviación entre semillas, IC95 y comparación emparejada con el gaussiano).
 
 ---
 
@@ -219,10 +224,19 @@ de difusión.
   `diffusion_val_loss`). Paciencia **30**, min_delta **5e-6**, máximo **500 épocas**.
 - DDPM, DDIM y WGAN guardan `last.pth` cada época (reanudación tras interrupciones; el WGAN final se
   interrumpió y reanudó una vez).
-- Semilla: los scripts de GAN, DCGAN y WGAN hacen `torch.manual_seed(42)` (`experiment.seed`); los de
-  **DDPM y DDIM no fijan ninguna semilla** (comprobado: no aparece `seed` en esos ficheros). No se ha
-  comprobado el determinismo de ningún entrenamiento. **Un único entrenamiento por modelo** (sin
-  repeticiones con otras semillas).
+- Semilla: en la ejecución original (semilla 42) los scripts de GAN, DCGAN y WGAN hacen
+  `torch.manual_seed(42)` (`experiment.seed`), pero los de **DDPM y DDIM no fijaban ninguna semilla**
+  (esa ejecución de DDPM/DDIM no es reproducible bit a bit). Después se añadió `--seed N` a
+  `train_models/train.py`: fija `experiment.seed = N`, siembra `random`, `numpy`, `torch` y `cuda` antes de
+  llamar al script del modelo y guarda en `<save_dir>/seed{N}/`. Las semillas 1–4 se entrenaron así
+  (todos los modelos sembrados). La semilla también fija el ruido de generación (3000 canales) y el
+  muestreo de los clásicos. No se ha comprobado el determinismo bit a bit.
+- **5 entrenamientos por modelo** (semillas 42, 1, 2, 3, 4), mismos hiperparámetros, mismos datos y
+  misma separación. Logs de las semillas 1–4: `logs/seeds/train_<modelo>_seed{N}.log`. Épocas hasta el
+  early stopping en las semillas 1–4 (de los logs): GAN 64/68/71/74; DCGAN 63/53/84/83; WGAN 83/89/61/63.
+  Los tiempos de entrenamiento de las semillas 1–4 **no son fiables** (varios entrenamientos se
+  interrumpieron por el límite de 2 h de las tareas y se reanudaron desde `last.pth`); para el coste se
+  usan los de la semilla 42 (tabla siguiente).
 - Hardware: CPU Intel Xeon @ 2.10 GHz, 4 hilos, PyTorch 2.15.0 (cu132, ejecutado en CPU).
 
 Épocas y tiempos de la ronda final (`eval_results/sodupe_180_split_g200/training_log.json`, tomados
@@ -314,6 +328,40 @@ h = CIR compleja de 200 taps; p_l = |h_l|²; τ_l = l · 109.375 ns.
 - **Coste** (`evaluation_models/model_costs.py`): parámetros contados en el checkpoint (generador o
   U-Net), tiempo de generación medido con 500 canales tras un calentamiento (CPU, 4 hilos; los clásicos
   incluyen el ajuste).
+
+### 4.2 Variabilidad: semillas y bootstrap por bloques (`evaluation_models/seed_stats.py`)
+
+Dos fuentes de incertidumbre, tratadas por separado:
+
+1. **Entrenamiento** (semilla): 5 semillas por modelo (§3.7). `seeds_metrics_summary.txt/.csv`: media y
+   desviación típica (ddof = 1) entre las 5 ejecuciones de **todas** las métricas de `metrics.pkl`
+   (las mismas que en §6.1–6.6, calculadas por `evaluation.py` en cada semilla).
+2. **Muestreo del test** (pocos tramos independientes, §2.2): **bootstrap por bloques**, 1000 réplicas.
+   En cada réplica:
+   - test (900 canales, en orden temporal) se remuestrea en **bloques de 50 canales consecutivos**
+     (18 bloques con reemplazo), para respetar la correlación temporal (coherencia ~150–200 medidas);
+   - train y val (referencias reales) se remuestrean igual, por bloques de 50;
+   - los canales generados (i.i.d.) se remuestrean canal a canal, de forma independiente para cada semilla;
+   - se recalculan las métricas frente al test remuestreado y se promedian entre las 5 semillas.
+   El generador aleatorio de la réplica b es `default_rng([42, b])` (resultado independiente del número de
+   procesos; las réplicas se pueden reanudar).
+   - **IC95**: percentiles 2.5 y 97.5 de la media entre semillas.
+   - **P(< Gaussian)**: fracción de réplicas en que la fuente tiene una métrica menor (mejor) que el
+     gaussiano **en la misma réplica** (comparación emparejada: el mismo test remuestreado para ambos).
+     P > 0.975 o < 0.025 = diferencia significativa al 5 % (bilateral).
+   Métricas del bootstrap (todas "menor es mejor"): PDP MAE (dB, taps por encima de −60 dB del pico del
+   PDP de test completo); KS de |h| (sobre un histograma de |h|² en dB con resolución 0.1 dB entre −120 y
+   20 dB, todos los taps); KS de cada rasgo por canal (retardo medio y RMS con todos los umbrales, nulo,
+   ganancia ZF, parámetros por canal de §4.1); |Δlog10 BER| medio sobre 0–30 dB con **BER por canal**
+   (`per_channel_ber`, réplica de `BER.ber_curve` canal a canal; aquí se usan **todos** los canales de
+   cada fuente, no los 900 primeros, por lo que las cifras de BER difieren algo de `ber_table.txt`).
+   Ficheros: `bootstrap_ci.txt/.csv`. Los rasgos por canal se calculan una vez por fuente.
+
+**Sesgo conocido**: KS y |Δ| son distancias (≥ 0); al remuestrear, el ruido las aumenta, de modo que la
+distribución bootstrap está desplazada hacia arriba y el valor puntual (datos completos) puede quedar
+cerca o por debajo del límite inferior del IC95. Por eso **la comparación entre modelos debe basarse en
+P(< Gaussian)** (emparejada), no en el solapamiento de los IC95: la mayor parte de la anchura de los IC95
+es la variabilidad del test, común a todas las fuentes.
 
 ---
 
@@ -568,7 +616,7 @@ referencia train-train (0.381) **[NO VERIFICADO el motivo]**.
 | TDL-Rice | — | 0.13 (incl. ajuste) | — |
 | Gaussian | — | 0.22 (incl. ajuste) | — |
 
-### 6.9 Resumen de conclusiones
+### 6.9 Resumen de conclusiones (semilla 42; ver §6.10 para la versión con significación)
 
 1. **Segundo orden** (PDP, correlación en frecuencia, Bc): el gaussiano de covarianza completa es el
    techo teórico; los generativos lo igualan, no lo superan (excepto el DDIM en PDP: 1.06 frente a
@@ -586,6 +634,127 @@ referencia train-train (0.381) **[NO VERIFICADO el motivo]**.
    al real, pero el más flojo en PDP (2.07 dB), con memorización parcial y el más lento. WGAN = mejor
    equilibrio (buena BER, RMS con umbral al nivel de la referencia real, sin memorización, generación
    instantánea; entrenamiento más largo). GAN básica = la más débil de los generativos en BER.
+
+### 6.10 Resultados con 5 semillas y bootstrap por bloques (**cifras para el artículo**)
+
+Ficheros: `seeds_metrics_summary.txt/.csv` (todas las métricas, media ± desviación entre semillas) y
+`bootstrap_ci.txt/.csv` (1000 réplicas). Referencia: test. Real train / Real val: un único valor (no hay
+semillas). En las tablas A y C las cifras de BER usan todos los canales de cada fuente (§4.2).
+
+**Tabla A** — media ± desviación típica entre las 5 semillas (Real train/val: valor único)
+
+| Métrica | Real train | Real val | GAN | DCGAN | WGAN | DDPM | DDIM | TDL-Rice | Gaussian |
+|---|---|---|---|---|---|---|---|---|---|
+| PDP MAE (dB) | 1.555 | 1.523 | 1.551 ± 0.090 | 1.546 ± 0.120 | 1.409 ± 0.083 | 1.644 ± 0.444 | 1.024 ± 0.125 | 1.724 ± 0.015 | 1.575 ± 0.046 |
+| KS \|h\| | 0.079 | 0.080 | 0.080 ± 0.008 | 0.076 ± 0.012 | 0.073 ± 0.007 | 0.082 ± 0.030 | 0.035 ± 0.012 | 0.071 ± 0.001 | 0.071 ± 0.004 |
+| KS retardo medio | 0.289 | 0.351 | 0.294 ± 0.036 | 0.309 ± 0.059 | 0.366 ± 0.024 | 0.365 ± 0.044 | 0.414 ± 0.011 | 0.354 ± 0.007 | 0.304 ± 0.005 |
+| KS RMS delay, sin umbral | 0.191 | 0.248 | 0.267 ± 0.008 | 0.270 ± 0.015 | 0.246 ± 0.016 | 0.212 ± 0.067 | 0.138 ± 0.054 | 0.436 ± 0.005 | 0.204 ± 0.009 |
+| KS RMS delay, 40 dB | 0.117 | 0.288 | 0.154 ± 0.015 | 0.148 ± 0.015 | 0.102 ± 0.012 | 0.211 ± 0.078 | 0.190 ± 0.099 | 0.297 ± 0.003 | 0.135 ± 0.006 |
+| KS RMS delay, 30 dB | 0.211 | 0.276 | 0.227 ± 0.034 | 0.218 ± 0.048 | 0.187 ± 0.016 | 0.164 ± 0.022 | 0.168 ± 0.026 | 0.317 ± 0.004 | 0.285 ± 0.004 |
+| KS RMS delay, 25 dB | 0.169 | 0.227 | 0.187 ± 0.043 | 0.171 ± 0.062 | 0.130 ± 0.018 | 0.191 ± 0.047 | 0.173 ± 0.036 | 0.277 ± 0.005 | 0.264 ± 0.003 |
+| KS RMS delay, 20 dB | 0.101 | 0.198 | 0.134 ± 0.011 | 0.149 ± 0.031 | 0.166 ± 0.031 | 0.221 ± 0.081 | 0.202 ± 0.046 | 0.187 ± 0.006 | 0.169 ± 0.005 |
+| KS profundidad del nulo | 0.193 | 0.266 | 0.279 ± 0.053 | 0.271 ± 0.046 | 0.260 ± 0.019 | 0.188 ± 0.027 | 0.226 ± 0.013 | 0.372 ± 0.007 | 0.321 ± 0.005 |
+| KS ganancia de ruido ZF | 0.154 | 0.385 | 0.251 ± 0.058 | 0.226 ± 0.052 | 0.229 ± 0.019 | 0.204 ± 0.048 | 0.194 ± 0.012 | 0.346 ± 0.010 | 0.293 ± 0.008 |
+| KS rizado | 0.205 | 0.242 | 0.292 ± 0.055 | 0.278 ± 0.043 | 0.280 ± 0.020 | 0.203 ± 0.042 | 0.237 ± 0.015 | 0.369 ± 0.010 | 0.344 ± 0.005 |
+| KS fracción en fade | 0.087 | 0.369 | 0.169 ± 0.029 | 0.139 ± 0.039 | 0.133 ± 0.009 | 0.157 ± 0.055 | 0.101 ± 0.012 | 0.240 ± 0.010 | 0.194 ± 0.008 |
+| KS eficiencia espectral | 0.123 | 0.402 | 0.161 ± 0.038 | 0.124 ± 0.031 | 0.125 ± 0.017 | 0.182 ± 0.046 | 0.105 ± 0.013 | 0.257 ± 0.012 | 0.199 ± 0.008 |
+| KS Bc90 por canal | 0.198 | 0.255 | 0.192 ± 0.036 | 0.173 ± 0.061 | 0.150 ± 0.017 | 0.173 ± 0.042 | 0.170 ± 0.023 | 0.245 ± 0.004 | 0.235 ± 0.002 |
+| KS ventana de retardo 90 % | 0.128 | 0.419 | 0.164 ± 0.037 | 0.145 ± 0.028 | 0.172 ± 0.017 | 0.262 ± 0.087 | 0.241 ± 0.066 | 0.187 ± 0.009 | 0.146 ± 0.004 |
+| KS taps con el 90 % de la energía | 0.062 | 0.124 | 0.075 ± 0.015 | 0.090 ± 0.031 | 0.120 ± 0.026 | 0.147 ± 0.063 | 0.156 ± 0.021 | 0.038 ± 0.003 | 0.042 ± 0.005 |
+| KS intervalo de retardo 40 dB | 0.138 | 0.124 | 0.195 ± 0.036 | 0.189 ± 0.054 | 0.253 ± 0.024 | 0.351 ± 0.083 | 0.350 ± 0.073 | 0.124 ± 0.006 | 0.195 ± 0.009 |
+| KS intervalo de retardo 30 dB | 0.115 | 0.185 | 0.183 ± 0.022 | 0.190 ± 0.016 | 0.161 ± 0.038 | 0.148 ± 0.026 | 0.129 ± 0.033 | 0.527 ± 0.005 | 0.177 ± 0.001 |
+| KS intervalo de retardo 25 dB | 0.178 | 0.201 | 0.187 ± 0.009 | 0.194 ± 0.032 | 0.166 ± 0.008 | 0.171 ± 0.021 | 0.171 ± 0.011 | 0.277 ± 0.015 | 0.206 ± 0.002 |
+| KS intervalo de retardo 20 dB | 0.198 | 0.085 | 0.212 ± 0.015 | 0.213 ± 0.026 | 0.296 ± 0.031 | 0.323 ± 0.073 | 0.316 ± 0.043 | 0.206 ± 0.007 | 0.216 ± 0.014 |
+| BER QPSK \|Δlog10\| | 0.020 | 0.056 | 0.060 ± 0.018 | 0.055 ± 0.017 | 0.042 ± 0.006 | 0.049 ± 0.026 | 0.039 ± 0.004 | 0.090 ± 0.006 | 0.072 ± 0.007 |
+| BER 16-QAM \|Δlog10\| | 0.011 | 0.039 | 0.036 ± 0.011 | 0.030 ± 0.012 | 0.021 ± 0.003 | 0.036 ± 0.022 | 0.018 ± 0.002 | 0.058 ± 0.002 | 0.044 ± 0.004 |
+
+**Tabla B** — IC95 del bootstrap por bloques y P(< Gaussian) emparejada (** > 0.975: mejor que el gaussiano; †† < 0.025: peor; * > 0.95 o † < 0.05 solo en una cola)
+
+| Métrica | Real train | Real val | GAN | DCGAN | WGAN | DDPM | DDIM | TDL-Rice | Gaussian IC95 |
+|---|---|---|---|---|---|---|---|---|---|
+| PDP MAE (dB) | 0.556 | 0.502 | 0.860 | 0.863 | 0.999** | 0.040† | 0.985** | 0.000†† | [1.065, 2.530] |
+| KS \|h\| | 0.252 | 0.351 | 0.043† | 0.081 | 0.418 | 0.000†† | 0.954* | 0.567 | [0.031, 0.127] |
+| KS retardo medio | 0.743 | 0.124 | 0.956* | 0.313 | 0.124 | 0.126 | 0.076 | 0.000†† | [0.192, 0.530] |
+| KS RMS delay, sin umbral | 0.625 | 0.225 | 0.007†† | 0.010†† | 0.009†† | 0.490 | 0.870 | 0.000†† | [0.118, 0.409] |
+| KS RMS delay, 40 dB | 0.560 | 0.068 | 0.075 | 0.170 | 0.812 | 0.189 | 0.317 | 0.057 | [0.122, 0.320] |
+| KS RMS delay, 30 dB | 0.936 | 0.509 | 0.932 | 0.913 | 0.888 | 0.814 | 0.786 | 0.019†† | [0.162, 0.482] |
+| KS RMS delay, 25 dB | 0.900 | 0.521 | 0.816 | 0.799 | 0.761 | 0.657 | 0.679 | 0.075 | [0.147, 0.475] |
+| KS RMS delay, 20 dB | 0.745 | 0.252 | 0.580 | 0.530 | 0.487 | 0.379 | 0.428 | 0.263 | [0.117, 0.382] |
+| KS profundidad del nulo | 0.991** | 0.658 | 0.995** | 0.994** | 0.995** | 0.977** | 0.992** | 0.000†† | [0.195, 0.451] |
+| KS ganancia de ruido ZF | 0.953* | 0.096 | 0.947 | 0.953* | 0.963* | 0.884 | 0.956* | 0.006†† | [0.141, 0.452] |
+| KS rizado | 0.996** | 0.819 | 0.998** | 0.998** | 0.998** | 0.992** | 0.995** | 0.000†† | [0.210, 0.491] |
+| KS fracción en fade | 0.756 | 0.004†† | 0.763 | 0.791 | 0.798 | 0.598 | 0.761 | 0.090 | [0.112, 0.354] |
+| KS eficiencia espectral | 0.749 | 0.002†† | 0.718 | 0.709 | 0.730 | 0.525 | 0.691 | 0.115 | [0.130, 0.396] |
+| KS Bc90 por canal | 0.861 | 0.290 | 0.783 | 0.752 | 0.758 | 0.621 | 0.607 | 0.083 | [0.139, 0.440] |
+| KS ventana de retardo 90 % | 0.463 | 0.110 | 0.375 | 0.467 | 0.430 | 0.248 | 0.332 | 0.242 | [0.115, 0.367] |
+| KS taps con el 90 % de la energía | 0.394 | 0.166 | 0.197 | 0.229 | 0.284 | 0.193 | 0.231 | 0.548 | [0.036, 0.230] |
+| KS intervalo de retardo 40 dB | 0.884 | 0.629 | 0.305 | 0.516 | 0.041† | 0.003†† | 0.002†† | 0.693 | [0.127, 0.292] |
+| KS intervalo de retardo 30 dB | 0.752 | 0.430 | 0.390 | 0.311 | 0.523 | 0.659 | 0.671 | 0.000†† | [0.122, 0.361] |
+| KS intervalo de retardo 25 dB | 0.907 | 0.586 | 0.780 | 0.850 | 0.771 | 0.749 | 0.710 | 0.126 | [0.150, 0.409] |
+| KS intervalo de retardo 20 dB | 0.750 | 0.779 | 0.794 | 0.777 | 0.164 | 0.111 | 0.143 | 0.607 | [0.133, 0.423] |
+| BER QPSK \|Δlog10\| | 0.707 | 0.558 | 0.672 | 0.701 | 0.757 | 0.592 | 0.732 | 0.160 | [0.020, 0.266] |
+| BER 16-QAM \|Δlog10\| | 0.688 | 0.537 | 0.644 | 0.674 | 0.717 | 0.559 | 0.689 | 0.152 | [0.011, 0.150] |
+
+**Tabla C** — IC95 de cada fuente (bootstrap de la media entre semillas):
+
+| Métrica | Real train | Real val | GAN | DCGAN | WGAN | DDPM | DDIM | TDL-Rice | Gaussian |
+|---|---|---|---|---|---|---|---|---|---|
+| PDP MAE (dB) | [1.006, 2.526] | [1.090, 2.655] | [1.055, 2.509] | [1.066, 2.516] | [0.997, 2.341] | [1.194, 2.556] | [0.860, 1.828] | [1.170, 2.699] | [1.065, 2.530] |
+| KS \|h\| | [0.027, 0.137] | [0.037, 0.162] | [0.033, 0.137] | [0.032, 0.133] | [0.027, 0.130] | [0.041, 0.139] | [0.021, 0.093] | [0.032, 0.125] | [0.031, 0.127] |
+| KS retardo medio | [0.171, 0.518] | [0.255, 0.619] | [0.184, 0.519] | [0.194, 0.534] | [0.201, 0.591] | [0.202, 0.590] | [0.223, 0.634] | [0.253, 0.580] | [0.192, 0.530] |
+| KS RMS delay, sin umbral | [0.109, 0.398] | [0.127, 0.527] | [0.151, 0.469] | [0.150, 0.475] | [0.140, 0.446] | [0.166, 0.372] | [0.126, 0.304] | [0.276, 0.635] | [0.118, 0.409] |
+| KS RMS delay, 40 dB | [0.097, 0.336] | [0.136, 0.521] | [0.134, 0.332] | [0.121, 0.342] | [0.100, 0.293] | [0.185, 0.334] | [0.151, 0.342] | [0.134, 0.500] | [0.122, 0.320] |
+| KS RMS delay, 30 dB | [0.131, 0.410] | [0.182, 0.478] | [0.156, 0.421] | [0.156, 0.409] | [0.134, 0.379] | [0.156, 0.337] | [0.146, 0.376] | [0.215, 0.551] | [0.162, 0.482] |
+| KS RMS delay, 25 dB | [0.130, 0.380] | [0.186, 0.455] | [0.147, 0.397] | [0.157, 0.376] | [0.123, 0.363] | [0.162, 0.402] | [0.145, 0.398] | [0.149, 0.492] | [0.147, 0.475] |
+| KS RMS delay, 20 dB | [0.108, 0.331] | [0.168, 0.451] | [0.129, 0.355] | [0.143, 0.359] | [0.111, 0.391] | [0.158, 0.447] | [0.128, 0.427] | [0.118, 0.395] | [0.117, 0.382] |
+| KS profundidad del nulo | [0.095, 0.331] | [0.136, 0.494] | [0.171, 0.406] | [0.160, 0.398] | [0.146, 0.386] | [0.133, 0.296] | [0.122, 0.353] | [0.245, 0.504] | [0.195, 0.451] |
+| KS ganancia de ruido ZF | [0.108, 0.320] | [0.200, 0.628] | [0.146, 0.406] | [0.141, 0.382] | [0.127, 0.384] | [0.164, 0.312] | [0.112, 0.350] | [0.188, 0.503] | [0.141, 0.452] |
+| KS rizado | [0.091, 0.361] | [0.123, 0.477] | [0.167, 0.440] | [0.158, 0.427] | [0.150, 0.426] | [0.128, 0.346] | [0.117, 0.386] | [0.233, 0.519] | [0.210, 0.491] |
+| KS fracción en fade | [0.085, 0.268] | [0.242, 0.606] | [0.122, 0.315] | [0.115, 0.280] | [0.103, 0.291] | [0.138, 0.290] | [0.095, 0.264] | [0.134, 0.400] | [0.112, 0.354] |
+| KS eficiencia espectral | [0.113, 0.337] | [0.282, 0.642] | [0.141, 0.343] | [0.135, 0.314] | [0.124, 0.331] | [0.174, 0.336] | [0.122, 0.328] | [0.146, 0.448] | [0.130, 0.396] |
+| KS Bc90 por canal | [0.122, 0.389] | [0.181, 0.471] | [0.144, 0.384] | [0.158, 0.363] | [0.127, 0.354] | [0.157, 0.384] | [0.145, 0.406] | [0.143, 0.455] | [0.139, 0.440] |
+| KS ventana de retardo 90 % | [0.116, 0.356] | [0.228, 0.662] | [0.141, 0.383] | [0.135, 0.354] | [0.113, 0.391] | [0.160, 0.480] | [0.151, 0.461] | [0.130, 0.409] | [0.115, 0.367] |
+| KS taps con el 90 % de la energía | [0.041, 0.244] | [0.069, 0.315] | [0.061, 0.250] | [0.065, 0.260] | [0.052, 0.320] | [0.078, 0.348] | [0.049, 0.357] | [0.036, 0.236] | [0.036, 0.230] |
+| KS intervalo de retardo 40 dB | [0.096, 0.255] | [0.119, 0.295] | [0.135, 0.296] | [0.146, 0.288] | [0.153, 0.351] | [0.247, 0.449] | [0.245, 0.447] | [0.094, 0.282] | [0.127, 0.292] |
+| KS intervalo de retardo 30 dB | [0.105, 0.330] | [0.129, 0.366] | [0.148, 0.356] | [0.137, 0.371] | [0.123, 0.352] | [0.136, 0.308] | [0.121, 0.295] | [0.399, 0.705] | [0.122, 0.361] |
+| KS intervalo de retardo 25 dB | [0.135, 0.377] | [0.137, 0.420] | [0.136, 0.368] | [0.145, 0.374] | [0.131, 0.352] | [0.153, 0.335] | [0.140, 0.358] | [0.170, 0.469] | [0.150, 0.409] |
+| KS intervalo de retardo 20 dB | [0.114, 0.399] | [0.065, 0.352] | [0.123, 0.415] | [0.121, 0.418] | [0.141, 0.497] | [0.192, 0.527] | [0.170, 0.516] | [0.151, 0.416] | [0.133, 0.423] |
+| BER QPSK \|Δlog10\| | [0.016, 0.205] | [0.017, 0.263] | [0.033, 0.241] | [0.029, 0.238] | [0.022, 0.227] | [0.044, 0.192] | [0.023, 0.217] | [0.018, 0.285] | [0.020, 0.266] |
+| BER 16-QAM \|Δlog10\| | [0.009, 0.114] | [0.010, 0.149] | [0.022, 0.133] | [0.020, 0.129] | [0.013, 0.121] | [0.030, 0.111] | [0.012, 0.116] | [0.010, 0.163] | [0.011, 0.150] |
+
+
+Notas:
+- DDPM entre semillas es **bimodal** en PDP MAE (dB): 2.071 (semilla 42, sin sembrar), 1.298, 2.184,
+  1.371, 1.298. Las demás arquitecturas son estables (p. ej. DDIM 1.056 / 1.066 / 0.884 / 0.921 / 1.195;
+  WGAN 1.516 / 1.377 / 1.346 / 1.478 / 1.330).
+- La desviación entre semillas de los modelos generativos (0.01–0.09 en KS) es del orden de muchas de
+  las diferencias entre modelos; la de los clásicos es casi nula (solo cambia su muestreo).
+- Los IC95 son anchos (p. ej. PDP MAE del gaussiano [1.07, 2.53] dB; KS del nulo [0.20, 0.45]): con un
+  solo test, la variabilidad de la referencia es del mismo orden que las diferencias entre modelos.
+
+**Lectura de la significación (P(< Gaussian), bilateral al 5 %)**:
+
+1. **Significativamente mejores que el gaussiano (los 5 generativos)**: profundidad del nulo
+   (P = 0.977–0.995) y rizado de |H(f)| (P = 0.992–0.998). También la referencia real train
+   (0.991 y 0.996): el gaussiano es claramente demasiado selectivo en frecuencia.
+2. **Ganancia de ruido ZF**: todos los generativos mejores en media (0.194–0.251 frente a 0.293) pero solo
+   al límite (P = 0.88–0.96; significativo al 5 % unilateral para DCGAN, WGAN y DDIM, no bilateral).
+3. **PDP MAE**: WGAN (P = 0.999) y DDIM (P = 0.985) significativamente mejores; DDPM peor al límite
+   (P = 0.040); TDL-Rice significativamente peor (P = 0.000).
+4. **KS de |h|**: DDIM mejor al límite (P = 0.954); DDPM significativamente peor (P = 0.000).
+5. **RMS delay sin umbral**: GAN, DCGAN y WGAN **significativamente peores** que el gaussiano
+   (P = 0.007–0.010); DDIM mejor en media (0.138 frente a 0.204) pero no significativo (P = 0.870). Con
+   umbrales (40–20 dB) ninguna diferencia generativo–gaussiano es significativa (P entre 0.07 y 0.93).
+6. **Estructura de retardos**: DDPM y DDIM significativamente peores en intervalo de retardo a 40 dB
+   (P = 0.003 y 0.002); en ventana de retardo y taps con el 90 % de la energía nadie difiere
+   significativamente del gaussiano. Retardo medio: solo GAN mejor (0.980 a 40 dB, 0.979 a 30 dB); el
+   resto, no significativo.
+7. **BER** (QPSK y 16-QAM): todos los generativos tienen menor |Δlog10 BER| medio que el gaussiano
+   (QPSK 0.039–0.060 frente a 0.072; 16-QAM 0.018–0.036 frente a 0.044), pero **ninguna diferencia es
+   significativa** (P = 0.56–0.76). Ni siquiera la referencia real train lo es (P = 0.71): a esta escala
+   de test, la BER media no discrimina entre fuentes.
+8. **TDL-Rice** es significativamente peor que el gaussiano en casi todo (PDP, nulos, rizado, ZF, RMS,
+   intervalo a 30 dB); solo empata en las métricas de energía concentrada.
 
 ---
 
@@ -620,13 +789,16 @@ figuras base.
 
 ## 8. Limitaciones y amenazas a la validez
 
-1. **Un solo entrenamiento por modelo y un solo test.** Sin repeticiones con otras semillas ni
-   intervalos de confianza. Test tiene 900 canales ≈ 5–7 tramos independientes del canal (tiempo de
+1. **Un solo test.** Test tiene 900 canales ≈ 5–7 tramos independientes del canal (tiempo de
    coherencia ~200 medidas). La propia referencia real varía mucho según qué datos reales se comparen
    con test (p. ej. KS de la ganancia ZF: train 0.139, val 0.385; fracción en fade: 0.088 vs 0.369).
-   **Diferencias de KS de ~0.05 entre modelos probablemente no son significativas.** Para una revista
-   convendría: varias semillas por modelo y/o validación cruzada rotando los bloques de test, o
-   *bootstrap* por bloques para los intervalos de confianza.
+   Se cuantificó con 5 semillas y bootstrap por bloques (§4.2, §6.10): los IC95 son anchos y solo
+   algunas diferencias son significativas (nulos, rizado, PDP de WGAN/DDIM; BER no). No se hizo
+   validación cruzada rotando los bloques de test (daría más potencia estadística, pero exige
+   reentrenar 5 modelos × k particiones).
+   - El tamaño de bloque del bootstrap (50) y el número de réplicas (1000) son elección propia; no se
+     estudió la sensibilidad al tamaño de bloque **[NO VERIFICADO]**.
+   - 5 semillas dan una estimación tosca de la desviación entre semillas (y DDPM es bimodal).
 2. **Deriva del canal (no estacionariedad).** Test es un tramo de la medida con estadística algo distinta
    (RMS delay sin umbral 547 ns en test frente a ~609 ns en train y val [AD HOC: train 608.6, val
    609.3 con la separación de huecos 100]). Por eso hay que leer los resultados frente a la referencia
@@ -656,7 +828,8 @@ figuras base.
 13. **Resolución en retardo**: 109.375 ns por tap; la ventana y el intervalo de retardo están
     cuantizados a esa resolución.
 14. **Determinismo**: no se ha comprobado que relanzar el entrenamiento reproduzca exactamente los mismos
-    checkpoints; DDPM y DDIM ni siquiera fijan semilla.
+    checkpoints. En la semilla 42, DDPM y DDIM no fijaban semilla (corregido para las semillas 1–4 con
+    `train.py --seed`).
 
 ---
 
@@ -667,6 +840,10 @@ python preprocess_dataset.py                          # dataset + separación (b
 python train_models/train.py --model gan dcgan wgan ddpm ddim
 python evaluation_models/evaluation.py                # genera 3000 canales/modelo y evalúa sobre test
 python evaluation_models/memorization.py
+# Semillas adicionales (por semilla N y modelo): entrenar, generar y evaluar en su propia carpeta
+python train_models/train.py --model gan dcgan wgan ddpm ddim --seed N   # → checkpoints/.../seed{N}/
+python evaluation_models/evaluation.py --config eval_results/sodupe_180_split_g200/seeds/seedN/evaluation_config.json
+python evaluation_models/seed_stats.py --cache <carpeta>   # tabla entre semillas + bootstrap (≈45 min, 4 procesos)
 python evaluation_models/model_costs.py               # lee training_log.json de paths.save_dir
 python evaluation_models/sweep_sampling.py --steps 25 50 100 250 500 1000 --eta 0 0.5 1   # muestreo DDIM
 ```
