@@ -1,0 +1,33 @@
+{
+  "experiment": {
+    "name": "loopback_diffusion",
+    "seed": 42
+  },
+  "dataset": {
+    "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy",
+    "type": "loopback",
+    "normalization": "per_tap",
+    "split_file": "data/datos_loopback/ch_sodupe_180_time_L200_fold2.npz"
+  },
+  "model": {
+    "time_emb_dim": 64
+  },
+  "diffusion": {
+    "T": 1000,
+    "use_tap_weights": true,
+    "lambda_psd": 0.05
+  },
+  "training": {
+    "epochs": 500,
+    "batch_size": 64,
+    "lr": 0.0002,
+    "patience": 30,
+    "min_delta": 5e-06,
+    "num_workers": 0,
+    "grad_clip": 1.0
+  },
+  "paths": {
+    "save_dir": "checkpoints/sodupe_180_segcv/fold2",
+    "best_model": "best_model.pth"
+  }
+}
