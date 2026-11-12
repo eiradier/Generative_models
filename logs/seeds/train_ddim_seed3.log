@@ -1,0 +1,85 @@
+
+===== Entrenando DDIM con checkpoints/sodupe_180_split_g200/seed3/config_ddim.json (semilla 3) =====
+Separación train/val: 10399 canales de entrenamiento, 1100 de validación
+Normalización por tap (escala 4.78, 0.0100% de valores recortados); scaler guardado en checkpoints/sodupe_180_split_g200/seed3/DDIM
+Epoch 1 | Loss 0.467719 | Val 0.375458
+Nuevo mejor modelo guardado | epoch 1 | loss 0.375458 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 2 | Loss 0.330791 | Val 0.361239
+Nuevo mejor modelo guardado | epoch 2 | loss 0.361239 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 3 | Loss 0.314759 | Val 0.356868
+Nuevo mejor modelo guardado | epoch 3 | loss 0.356868 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 4 | Loss 0.308403 | Val 0.350891
+Nuevo mejor modelo guardado | epoch 4 | loss 0.350891 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 5 | Loss 0.317516 | Val 0.348125
+Nuevo mejor modelo guardado | epoch 5 | loss 0.348125 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 6 | Loss 0.310648 | Val 0.347505
+Nuevo mejor modelo guardado | epoch 6 | loss 0.347505 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 7 | Loss 0.307233 | Val 0.343799
+Nuevo mejor modelo guardado | epoch 7 | loss 0.343799 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 8 | Loss 0.311803 | Val 0.341646
+Nuevo mejor modelo guardado | epoch 8 | loss 0.341646 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 9 | Loss 0.299108 | Val 0.342577
+Epoch 10 | Loss 0.306632 | Val 0.338949
+Nuevo mejor modelo guardado | epoch 10 | loss 0.338949 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 11 | Loss 0.296771 | Val 0.340251
+Epoch 12 | Loss 0.285342 | Val 0.338162
+Nuevo mejor modelo guardado | epoch 12 | loss 0.338162 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 13 | Loss 0.291973 | Val 0.334717
+Nuevo mejor modelo guardado | epoch 13 | loss 0.334717 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 14 | Loss 0.298052 | Val 0.338178
+Epoch 15 | Loss 0.286214 | Val 0.335415
+Epoch 16 | Loss 0.281464 | Val 0.335278
+Epoch 17 | Loss 0.276399 | Val 0.332296
+Nuevo mejor modelo guardado | epoch 17 | loss 0.332296 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 18 | Loss 0.274527 | Val 0.330233
+Nuevo mejor modelo guardado | epoch 18 | loss 0.330233 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 19 | Loss 0.281072 | Val 0.332949
+Epoch 20 | Loss 0.276946 | Val 0.335804
+Epoch 21 | Loss 0.277873 | Val 0.331205
+Epoch 22 | Loss 0.271652 | Val 0.329939
+Nuevo mejor modelo guardado | epoch 22 | loss 0.329939 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 23 | Loss 0.275497 | Val 0.328469
+Nuevo mejor modelo guardado | epoch 23 | loss 0.328469 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 24 | Loss 0.259733 | Val 0.330079
+Epoch 25 | Loss 0.273959 | Val 0.330405
+Epoch 26 | Loss 0.273084 | Val 0.327984
+Nuevo mejor modelo guardado | epoch 26 | loss 0.327984 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 27 | Loss 0.270448 | Val 0.328408
+Epoch 28 | Loss 0.274159 | Val 0.328011
+Epoch 29 | Loss 0.269411 | Val 0.330304
+Epoch 30 | Loss 0.261180 | Val 0.326407
+Nuevo mejor modelo guardado | epoch 30 | loss 0.326407 -> checkpoints/sodupe_180_split_g200/seed3/DDIM/best_model.pth
+Epoch 31 | Loss 0.269725 | Val 0.331839
+Epoch 32 | Loss 0.273461 | Val 0.330505
+Epoch 33 | Loss 0.265261 | Val 0.327678
+Epoch 34 | Loss 0.260701 | Val 0.332137
+Epoch 35 | Loss 0.268245 | Val 0.331971
+Epoch 36 | Loss 0.260324 | Val 0.329643
+Epoch 37 | Loss 0.260708 | Val 0.330137
+Epoch 38 | Loss 0.269316 | Val 0.329675
+Epoch 39 | Loss 0.272710 | Val 0.327534
+Epoch 40 | Loss 0.257523 | Val 0.328463
+Epoch 41 | Loss 0.263094 | Val 0.326783
+Epoch 42 | Loss 0.268289 | Val 0.329290
+Epoch 43 | Loss 0.255222 | Val 0.329699
+Epoch 44 | Loss 0.255127 | Val 0.331421
+Epoch 45 | Loss 0.257257 | Val 0.332518
+Epoch 46 | Loss 0.265241 | Val 0.328821
+Epoch 47 | Loss 0.248316 | Val 0.332982
+Epoch 48 | Loss 0.260417 | Val 0.331285
+Epoch 49 | Loss 0.258492 | Val 0.332917
+Epoch 50 | Loss 0.256449 | Val 0.332017
+Epoch 51 | Loss 0.258773 | Val 0.329659
+Epoch 52 | Loss 0.252835 | Val 0.330500
+Epoch 53 | Loss 0.259912 | Val 0.330936
+Epoch 54 | Loss 0.259287 | Val 0.330037
+Epoch 55 | Loss 0.246788 | Val 0.333743
+Epoch 56 | Loss 0.253375 | Val 0.331214
+Epoch 57 | Loss 0.258436 | Val 0.331968
+Epoch 58 | Loss 0.258563 | Val 0.334427
+Epoch 59 | Loss 0.248996 | Val 0.329868
+Epoch 60 | Loss 0.252117 | Val 0.331511
+
+Early stopping
+===== DDIM terminado en 16.6 min =====
+Generado ddim (3000, 2, 200)
