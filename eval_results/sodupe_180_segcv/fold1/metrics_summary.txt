@@ -1,0 +1,115 @@
+===== EVALUACIÓN DE MODELOS GENERATIVOS =====
+Datos reales: data/datos_loopback/ch_sodupe_180_time_L200.npy, subconjunto 'test' (2841 canales, L=200)
+Muestras generadas por modelo: 3000
+Periodo de muestreo: 109.375 ns
+
+Metric                                     GAN       DCGAN        WGAN        DDPM        DDIM    TDL-Rice    Gaussian
+----------------------------------------------------------------------------------------------------------------------
+PDP MAE (lin)                        6.121e-04   6.524e-04   5.598e-04   7.672e-04   5.034e-04   3.231e-04   2.744e-04
+PDP MSE (lin)                        1.866e-05   1.783e-05   1.593e-05   2.135e-05   1.287e-05   3.501e-06   2.832e-06
+PDP MAE (dB)                             0.974       1.100       1.143       1.167       1.391       0.593       0.698
+Energy fake/real (dB)                    0.237       0.228      -0.442      -0.211      -0.162      -0.000      -0.000
+Mean delay real (ns)                    194.73      194.73      194.73      194.73      194.73      194.73      194.73
+Mean delay fake (ns)                    188.61      189.47      174.86      184.23      189.88      204.05      199.45
+Mean delay MAE (ns)                       6.12        5.27       19.87       10.51        4.85        9.32        4.71
+Mean delay KS                            0.141       0.148       0.249       0.153       0.124       0.150       0.117
+Mean delay t-test p                   3.50e-06    6.70e-05    1.19e-50    7.68e-13    4.47e-04    1.57e-15    3.79e-04
+RMS delay real (ns)                     634.24      634.24      634.24      634.24      634.24      634.24      634.24
+RMS delay fake (ns)                     585.03      580.53      593.25      564.40      566.36      625.08      606.02
+RMS delay MAE (ns)                       49.21       53.72       41.00       69.85       67.88        9.16       28.22
+RMS delay KS                             0.214       0.241       0.200       0.323       0.311       0.096       0.170
+RMS delay t-test p                    1.77e-65    3.78e-78    8.99e-43    3.57e-84   1.09e-100    3.09e-04    2.28e-20
+Mean delay@40dB real (ns)               179.37      179.37      179.37      179.37      179.37      179.37      179.37
+Mean delay@40dB fake (ns)               174.84      176.07      159.44      170.25      176.63      189.95      185.07
+Mean delay@40dB KS                       0.149       0.147       0.263       0.150       0.127       0.153       0.111
+RMS delay@40dB real (ns)                474.49      474.49      474.49      474.49      474.49      474.49      474.49
+RMS delay@40dB fake (ns)                433.24      432.60      427.43      408.70      418.79      476.28      455.29
+RMS delay@40dB MAE (ns)                  41.25       41.89       47.06       65.79       55.71        1.79       19.20
+RMS delay@40dB KS                        0.245       0.260       0.257       0.378       0.321       0.061       0.162
+Mean delay@30dB real (ns)               147.82      147.82      147.82      147.82      147.82      147.82      147.82
+Mean delay@30dB fake (ns)               149.43      150.60      133.51      146.36      152.35      161.17      157.67
+Mean delay@30dB KS                       0.078       0.084       0.201       0.105       0.145       0.199       0.145
+RMS delay@30dB real (ns)                233.95      233.95      233.95      233.95      233.95      233.95      233.95
+RMS delay@30dB fake (ns)                228.43      224.68      220.26      225.77      225.20      252.53      243.16
+RMS delay@30dB MAE (ns)                   5.53        9.27       13.69        8.19        8.76       18.58        9.20
+RMS delay@30dB KS                        0.080       0.106       0.125       0.126       0.099       0.249       0.151
+Mean delay@25dB real (ns)               143.06      143.06      143.06      143.06      143.06      143.06      143.06
+Mean delay@25dB fake (ns)               145.47      146.69      129.77      142.06      148.76      156.03      153.06
+Mean delay@25dB KS                       0.079       0.091       0.204       0.119       0.156       0.196       0.157
+RMS delay@25dB real (ns)                215.27      215.27      215.27      215.27      215.27      215.27      215.27
+RMS delay@25dB fake (ns)                210.48      207.10      207.33      210.26      211.30      228.22      225.18
+RMS delay@25dB MAE (ns)                   4.79        8.17        7.94        5.01        3.97       12.95        9.92
+RMS delay@25dB KS                        0.084       0.108       0.145       0.132       0.107       0.225       0.206
+Mean delay@20dB real (ns)               137.27      137.27      137.27      137.27      137.27      137.27      137.27
+Mean delay@20dB fake (ns)               140.46      141.62      124.47      137.05      144.16      150.44      147.27
+Mean delay@20dB KS                       0.076       0.093       0.206       0.134       0.162       0.193       0.153
+RMS delay@20dB real (ns)                203.25      203.25      203.25      203.25      203.25      203.25      203.25
+RMS delay@20dB fake (ns)                200.25      196.65      196.47      199.81      201.81      217.00      213.85
+RMS delay@20dB MAE (ns)                   3.00        6.60        6.78        3.44        1.43       13.75       10.60
+RMS delay@20dB KS                        0.088       0.107       0.145       0.128       0.111       0.215       0.195
+Std per tap MAE                      1.208e-03   1.076e-03   8.672e-04   1.074e-03   1.075e-03   8.281e-04   8.146e-04
+|h| KS distance                          0.060       0.068       0.069       0.076       0.086       0.060       0.052
+E|H(f)|^2 MAE (dB)                       0.673       0.786       0.603       0.623       0.541       0.690       0.395
+Freq. corr. MAE                         0.0419      0.0436      0.0455      0.0294      0.0210      0.0165      0.0138
+Null depth real (dB)                    -19.57      -19.57      -19.57      -19.57      -19.57      -19.57      -19.57
+Null depth fake (dB)                    -19.63      -20.89      -18.49      -18.13      -19.06      -21.79      -20.55
+Null depth KS                            0.060       0.077       0.082       0.083       0.064       0.125       0.058
+ZF noise gain real (dB)                   5.89        5.89        5.89        5.89        5.89        5.89        5.89
+ZF noise gain fake (dB)                   5.52        6.10        5.09        5.37        5.43        6.44        5.94
+ZF noise gain KS                         0.071       0.097       0.104       0.083       0.079       0.135       0.073
+Kurtosis peak tap real                   63.06       63.06       63.06       63.06       63.06       63.06       63.06
+Kurtosis peak tap fake                   -0.38       -0.32       -0.23       17.71        1.48       -0.08        0.55
+Kurtosis real (median)                  -0.065      -0.065      -0.065      -0.065      -0.065      -0.065      -0.065
+Kurtosis fake (median)                   0.052      -0.023      -0.046       0.143      -0.082       0.079      -0.107
+Kurtosis MAE                             0.418       0.401       0.441       0.598       0.546       0.423       0.408
+Ripple |H(f)| (dB) real                  24.74       24.74       24.74       24.74       24.74       24.74       24.74
+Ripple |H(f)| (dB) fake                  25.07       26.14       24.05       23.86       24.46       26.96       26.16
+Ripple |H(f)| (dB) KS                    0.058       0.074       0.089       0.083       0.065       0.120       0.078
+Fade frac. (-10 dB) real                0.0600      0.0600      0.0600      0.0600      0.0600      0.0600      0.0600
+Fade frac. (-10 dB) fake                0.0550      0.0650      0.0500      0.0550      0.0500      0.0650      0.0600
+Fade frac. (-10 dB) KS                   0.097       0.074       0.150       0.073       0.116       0.088       0.062
+SE @20dB (b/s/Hz) real                   6.101       6.101       6.101       6.101       6.101       6.101       6.101
+SE @20dB (b/s/Hz) fake                   6.122       6.086       6.152       6.114       6.135       6.065       6.099
+SE @20dB (b/s/Hz) KS                     0.058       0.083       0.123       0.088       0.082       0.123       0.067
+SE @20dB (b/s/Hz) out10% real            5.793       5.793       5.793       5.793       5.793       5.793       5.793
+SE @20dB (b/s/Hz) out10% fake            5.837       5.803       5.909       5.827       5.861       5.797       5.833
+Bc90 per ch. (MHz) real                 0.3312      0.3312      0.3312      0.3312      0.3312      0.3312      0.3312
+Bc90 per ch. (MHz) fake                 0.3432      0.3485      0.3401      0.3378      0.3341      0.3094      0.3147
+Bc90 per ch. (MHz) KS                    0.094       0.118       0.145       0.139       0.120       0.182       0.165
+Delay window 90% (ns) real               656.3       656.3       656.3       656.3       656.3       656.3       656.3
+Delay window 90% (ns) fake               656.3       656.3       656.3       656.3       656.3       765.6       656.3
+Delay window 90% (ns) KS                 0.094       0.117       0.051       0.029       0.034       0.180       0.142
+Taps 90% energy real                       4.0         4.0         4.0         4.0         4.0         4.0         4.0
+Taps 90% energy fake                       4.0         4.0         4.0         4.0         4.0         5.0         5.0
+Taps 90% energy KS                       0.064       0.060       0.107       0.082       0.092       0.174       0.147
+Delay interval@40dB (ns) real          10062.5     10062.5     10062.5     10062.5     10062.5     10062.5     10062.5
+Delay interval@40dB (ns) fake           9843.8      9843.8      9734.4      9406.3      9734.4     10171.9     10062.5
+Delay interval@40dB (ns) KS              0.177       0.159       0.208       0.359       0.238       0.112       0.098
+Delay interval@30dB (ns) real           1421.9      1421.9      1421.9      1421.9      1421.9      1421.9      1421.9
+Delay interval@30dB (ns) fake           1421.9      1312.5      1312.5      1312.5      1312.5      1968.8      1421.9
+Delay interval@30dB (ns) KS              0.162       0.185       0.208       0.169       0.171       0.395       0.120
+Delay interval@25dB (ns) real           1093.8      1093.8      1093.8      1093.8      1093.8      1093.8      1093.8
+Delay interval@25dB (ns) fake           1093.8      1093.8      1093.8      1093.8      1093.8      1203.1      1093.8
+Delay interval@25dB (ns) KS              0.123       0.117       0.195       0.134       0.152       0.187       0.144
+Delay interval@20dB (ns) real            875.0       875.0       875.0       875.0       875.0       875.0       875.0
+Delay interval@20dB (ns) fake            984.4       875.0       875.0       984.4       984.4       984.4       984.4
+Delay interval@20dB (ns) KS              0.063       0.063       0.088       0.052       0.072       0.150       0.133
+Bc90 real (MHz)                         0.3147      0.3147      0.3147      0.3147      0.3147      0.3147      0.3147
+Bc90 fake (MHz)                         0.3256      0.3268      0.3267      0.3194      0.3218      0.3002      0.3033
+Bc90 error (MHz)                        0.0109      0.0121      0.0120      0.0047      0.0071      0.0146      0.0114
+Bc50 real (MHz)                         2.4449      2.4449      2.4449      2.4449      2.4449      2.4449      2.4449
+Bc50 fake (MHz)                         1.5610      1.3819         nan      1.6645      1.5224      1.5216      1.5786
+Bc50 error (MHz)                        0.8839      1.0629         nan      0.7804      0.9224      0.9232      0.8663
+BER 16QAM |dlog10|                       0.028       0.008       0.060       0.034       0.036       0.017       0.008
+BER QPSK |dlog10|                        0.033       0.009       0.085       0.056       0.049       0.021       0.009
+
+Retardos: 'sin sufijo' = todos los taps; '@X dB' = solo taps con potencia >= pico del canal - X dB.
+Null depth / ZF noise gain: mediana por canal de min_f |H(f)|^2 y E_f{1/|H(f)|^2} (|H|^2 normalizado
+  a su media en la banda). Kurtosis: curtosis en exceso de la parte difusa (h - media del tap), media
+  de Re e Im (0 = gaussiana); 'peak tap' = tap del pico del PDP; median/MAE = resto de taps a menos
+  de 30 dB del pico.
+Parámetros por canal (mediana real/generada y KS): rizado max/min de |H(f)|^2; fracción de banda en
+  fade; eficiencia espectral E_f{log2(1+SNR|H|^2)} y su percentil 10 (outage 10%); Bc por canal (DFT
+  del perfil del propio canal); ventana e intervalo de retardo (ITU-R P.1407); taps con X% energía.
+KS: estadístico de Kolmogorov-Smirnov (0 = distribuciones idénticas, 1 = disjuntas).
+t-test p > 0.05: no hay diferencia significativa entre las medias.
