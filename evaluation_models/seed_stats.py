@@ -34,11 +34,13 @@ Uso (desde la raíz del repositorio):
 import argparse
 import csv
 import glob
+import multiprocessing as mp
 import os
 import pickle
 import sys
 
 import numpy as np
+import torch
 from scipy.stats import ks_2samp
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -152,6 +154,13 @@ def block_resample(n, block, rng):
     return np.concatenate([np.arange(s, min(s + block, n)) for s in pick])
 
 
+_REPLICATE = None
+
+
+def _run_replicate(b):
+    return b, _REPLICATE(b)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Semillas + bootstrap por bloques")
     parser.add_argument("--config", default=os.path.join(THIS_DIR, "evaluation_config.json"))
@@ -161,6 +170,10 @@ def main():
     parser.add_argument("--n-boot", type=int, default=1000)
     parser.add_argument("--block", type=int, default=50, help="Tamaño de bloque del bootstrap de test")
     parser.add_argument("--out", default=None, help="Carpeta de salida (por defecto paths.save_dir)")
+    parser.add_argument("--workers", type=int, default=os.cpu_count() or 1,
+                        help="Procesos para las réplicas del bootstrap")
+    parser.add_argument("--cache", default=None,
+                        help="Carpeta para guardar rasgos por canal y réplicas parciales (permite reanudar)")
     args = parser.parse_args()
 
     cfg = ev.load_config(args.config)
@@ -168,6 +181,7 @@ def main():
     runs = args.runs or [base] + sorted(glob.glob(os.path.join(base, "seeds", "seed*")))
     runs = [ev.repo_path(r) for r in runs if os.path.exists(os.path.join(ev.repo_path(r), "metrics.pkl"))]
     out_dir = ev.repo_path(args.out) if args.out else base
+    os.makedirs(out_dir, exist_ok=True)
     print(f"{len(runs)} ejecuciones:", *runs, sep="\n  ")
     seed_table(runs, out_dir)
 
@@ -185,14 +199,32 @@ def main():
     feat_keys = None
 
     print("Rasgos por canal ...", flush=True)
+    cache = ev.repo_path(args.cache) if args.cache else None
+    if cache:
+        os.makedirs(cache, exist_ok=True)
+
+    def get_source(key, loader):
+        # Los rasgos por canal son lo más caro; con --cache se guardan para reanudar
+        path = os.path.join(cache, "src_" + "_".join(os.path.basename(str(x)) for x in key) + ".pkl") \
+            if cache else None
+        if path and os.path.exists(path):
+            with open(path, "rb") as f:
+                return pickle.load(f)
+        src = Source(loader(), dt, cfg, mag_edges, ber_cfg, seed, n_ber)
+        if path:
+            with open(path, "wb") as f:
+                pickle.dump(src, f)
+        print(f"  {key}", flush=True)
+        return src
+
     srcs = {}
     for k, h in real.items():
-        srcs[("real", k)] = Source(h, dt, cfg, mag_edges, ber_cfg, seed, n_ber)
+        srcs[("real", k)] = get_source(("real", k), lambda h=h: h)
     for r in runs:
         for m in GEN_MODELS + CLASSIC:
             p = os.path.join(r, "generated", f"h_generated_{m}.npy")
             if os.path.exists(p):
-                srcs[(m, r)] = Source(ev.to_complex(np.load(p)), dt, cfg, mag_edges, ber_cfg, seed, n_ber)
+                srcs[(m, r)] = get_source((m, r), lambda p=p: ev.to_complex(np.load(p)))
     test = srcs[("real", "test")]
     feat_keys = [k for k in test.feat if not k.startswith("_")]
     mask = test.p.mean(0) > test.p.mean(0).max() * 1e-6
@@ -216,17 +248,31 @@ def main():
         return res
 
     point = all_metrics(None)
-    rng = np.random.default_rng(seed)
     keys = list(point["real_train"])
     names = ["real_train", "real_val"] + models
-    boot = {n: {k: np.zeros(args.n_boot) for k in keys} for n in names}
-    for b in range(args.n_boot):
-        res = all_metrics(rng)
-        for n in names:
-            for k in keys:
-                boot[n][k][b] = np.mean(res[n][k])
-        if (b + 1) % 100 == 0:
-            print(f"  réplica {b + 1}/{args.n_boot}", flush=True)
+    global _REPLICATE
+    _REPLICATE = lambda b: {n: {k: float(np.mean(v)) for k, v in r.items()}  # noqa: E731
+                            for n, r in all_metrics(np.random.default_rng([seed, b])).items()}
+    # Cada réplica usa su propio generador ([seed, b]): el resultado no depende del orden ni del número de
+    # procesos, y las réplicas ya hechas (guardadas en --cache) se pueden reutilizar al reanudar
+    done = {}
+    part = os.path.join(cache, "replicates.pkl") if cache else None
+    if part and os.path.exists(part):
+        with open(part, "rb") as f:
+            done = pickle.load(f)
+    todo = [b for b in range(args.n_boot) if b not in done]
+    print(f"Réplicas: {len(done)} hechas, {len(todo)} pendientes ({args.workers} procesos)", flush=True)
+    ctx = mp.get_context("fork")
+    with ctx.Pool(args.workers, initializer=torch.set_num_threads, initargs=(1,)) as pool:
+        for i, (b, res) in enumerate(pool.imap_unordered(_run_replicate, todo, chunksize=4)):
+            done[b] = res
+            if (i + 1) % 50 == 0 or i + 1 == len(todo):
+                print(f"  réplica {len(done)}/{args.n_boot}", flush=True)
+                if part:
+                    with open(part + ".tmp", "wb") as f:
+                        pickle.dump(done, f)
+                    os.replace(part + ".tmp", part)
+    boot = {n: {k: np.array([done[b][n][k] for b in range(args.n_boot)]) for k in keys} for n in names}
 
     rows = []
     for k in keys:
