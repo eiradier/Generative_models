@@ -53,7 +53,7 @@ significativos, retardo medio) el gaussiano empata o gana.
 | Tipo de canal | Loopback (canal de autointerferencia) de un sistema IBFD. Solo se usan datos de loopback |
 | Ancho de banda | 8 MHz (DVB-T2). Frecuencia de muestreo fs = 8/7 · 8 MHz = 9.142857 MHz → **periodo de tap 109.375 ns** (`sampling.bandwidth_hz` en `evaluation_config.json`; fórmula en `evaluation.sampling_period`) |
 | Taps conservados | L = 200 (21.875 µs) |
-| Intervalo temporal entre CIR consecutivas | **[NO VERIFICADO]** no consta en el repositorio. Necesario para expresar tiempos de coherencia en segundos y para el análisis Doppler (que el autor hará aparte; los modelos no lo modelan) |
+| Intervalo temporal entre CIR consecutivas | **7.616 ms** según el artículo de la campaña (Bilbao et al., *Measurement* 234, 2024; PP2, Dy = 2); **no consta en el fichero** (`recordings.py --cir-period`). Duración total del fichero ≈ 108 s. El fichero **no es continuo**: 109 tramos (§2.3) |
 | Frecuencia portadora, equipo de medida, método de estimación de la CIR | **[NO VERIFICADO]** no constan |
 
 En el repositorio hay un PDF `GANs for channel data generation.pdf` (trabajo previo del autor, **[NO
@@ -97,18 +97,34 @@ sobre el `.npy` original, 14218 canales, 200 taps).
 - Separación anterior (huecos de 100) conservada en `..._split_gap100.npz` (train 10799, val 1300,
   test 1200); sus resultados están en `eval_results/sodupe_180_split/` y han quedado **sustituidos**.
 
-**Justificación del hueco de 200 — tiempo de coherencia en muestras** [AD HOC]. Correlación entre
-la parte variable (sin la media) del canal en la medida *n* y en la *n+k*, autocorrelación por tap
-promediada con la potencia de cada tap (`.npy` original, 14218 canales, 200 taps):
+**Justificación del hueco de 200 — coherencia temporal** (`evaluation_models/recordings.py`,
+`recordings_coherence.csv`; sustituye a la tabla [AD HOC] anterior, que mezclaba pares de tramos
+distintos, §2.3). Correlación de la parte variable v = x − media global entre la CIR *n* y la *n+k*
+(autocorrelación por tap promediada con la potencia de cada tap; canales conservados, 200 taps), usando
+**solo pares del mismo tramo continuo**; entre paréntesis, con todos los pares (cálculo antiguo):
 
-| Separación k (medidas) | 1 | 2 | 3 | 5 | 10 | 20 | 30 | 50 | 75 | 100 | 150 | 200 | 300 | 500 | 1000 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Correlación por tap (parte variable) | 0.984 | 0.972 | 0.960 | 0.941 | 0.889 | 0.783 | 0.676 | 0.479 | 0.307 | 0.214 | 0.079 | 0.024 | 0.017 | 0.066 | 0.009 |
+| k (CIR) | 1 | 5 | 10 | 20 | 30 | 50 | 75 | 100 | 150 | 200 | 300 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| t (s) | 0.008 | 0.038 | 0.076 | 0.152 | 0.228 | 0.381 | 0.571 | 0.762 | 1.142 | 1.523 | 2.285 |
+| ρ mismo tramo | 0.989 | 0.982 | 0.975 | 0.952 | 0.921 | 0.846 | 0.751 | 0.664 | 0.503 | 0.295 | 0.345 |
+| ρ todos los pares | 0.985 | 0.941 | 0.890 | 0.784 | 0.677 | 0.478 | 0.303 | 0.208 | 0.071 | 0.018 | 0.009 |
+| pares mismo tramo | 14087 | 13648 | 13103 | 12025 | 10949 | 8890 | 6709 | 5082 | 2575 | 1082 | 227 |
 
-→ coherencia 0.9 ≈ 10 medidas, 0.5 ≈ 50 medidas, descorrelación ≈ 150–200 medidas. Con hueco de 100
-la correlación residual entre el último canal de train y el primero de test era ~0.2; con 200, ~0.02.
-Con la correlación vectorial completa (incluida la parte fija) nunca baja de ~0.6, por la componente
-estática.
+| Umbral | Mismo tramo | Todos los pares (antiguo) |
+|---|---|---|
+| ρ = 0.9 | k = 36 (0.27 s) | k = 9 (0.07 s) |
+| ρ = 0.5 | k = 151 (1.15 s) | k = 48 (0.36 s) |
+| ρ = 0.1 (descorrelación) | **no se alcanza** (los tramos son más cortos: mediana 127 CIR) | k = 137 (1.04 s) |
+
+- La coherencia **dentro** de un tramo es ~3–4 veces mayor que la estimada antes: la caída rápida de la
+  tabla antigua se debía sobre todo a los saltos entre tramos, no a la evolución del canal.
+- Para k ≥ 200 hay pocos pares (pocos tramos tan largos) y la estimación es ruidosa (sube a 0.35 en k =
+  300 y 0.69 en k = 400 con 52 pares).
+- Restar la media de cada tramo (columna "media local" del CSV) da una coherencia sesgada a la baja
+  (k = 4 para 0.9) porque la media local absorbe la variación lenta; no se usa.
+- **Consecuencia para el hueco de 200**: dentro de un tramo, ρ ≈ 0.3 a 200 CIR, así que el hueco **no**
+  descorrela por sí solo. La independencia efectiva entre conjuntos viene de los cortes: de 109 tramos,
+  solo **2 se reparten entre train y test** (0 train–val, 0 val–test; §2.3).
 
 **Por qué bloques de 500 y no más pequeños** [AD HOC]. Simulación con 20 semillas de reparto, hueco 200:
 
@@ -118,10 +134,68 @@ estática.
 | 500 | 13 % | 32 ns |
 | 1000 | 10 % | 32 ns |
 
-El RMS delay medio por bloque de 500 (sin umbral) varía entre 509 y 746 ns a lo largo de la medida:
-el canal deriva lentamente. Con ~70 tramos independientes en toda la medida, test (10 %) contiene
-~7 y siempre se desvía ~30 ns de la media, sea cual sea el bloque. Intercalar más fino solo pierde
-datos.
+El RMS delay medio por bloque de 500 (sin umbral) varía entre 509 y 746 ns a lo largo de la medida.
+Con 109 tramos de estadística distinta (§2.3), test (900 canales) contiene solo **8 tramos** (3 completos)
+y su media se desvía de la global, sea cual sea el bloque. Intercalar más fino solo pierde datos.
+
+### 2.3 Estructura en tramos continuos (`evaluation_models/recordings.py`)
+
+Ficheros en `eval_results/sodupe_180_split_g200/`: `recordings.txt` (resumen), `recordings_segments.csv`
+(un tramo por fila: inicio/fin en el `.npy` original, longitud, canales conservados, instante, conjunto,
+retardos medios), `recordings.npz` (índice de tramo de cada CIR del `.npy` original, `segment_raw`, y del
+dataset filtrado, `segment_filtered`; cortes; cociente r), figura `fig_recordings.{pdf,png}`.
+
+**Detección.** Para cada posición *n* se calcula r = mediana del cambio entre CIR a través de *n*
+(1 − |corr| entre CIR a ambos lados, ventana w = 3) / mediana del cambio entre CIR consecutivas a cada
+lado. log10 r es **bimodal**: la gran mayoría en ~0.5 (r ≈ 3) y un grupo separado en ~3 (r ≈ 10³).
+- Corte si r > 100 → 121 cortes.
+- Los tramos de < 10 CIR (transitorios) se unen al siguiente → **108 cortes, 109 tramos**.
+- Robustez al umbral: r > 30: 123 cortes; > 100: 121; > 300: 108; > 1000: 96. Las fronteras son claras.
+- La parte variable está correlada entre los extremos de un mismo tramo (mediana 0.47) y anticorrelada a
+  través de un corte (mediana −0.20): son discontinuidades reales del canal, no ruido.
+
+**Longitud de los tramos** (CIR): mínimo 11, p25 65, **mediana 127**, p75 191, máximo 452, media 130.4
+(≈ 0.99 s con 7.616 ms; máximo 3.44 s).
+
+**No coinciden con la hipótesis de grabaciones de 5 s** (Bilbao et al.: 5 s cada minuto durante una
+hora → ~657 CIR por grabación, ~21.7 grabaciones en el fichero):
+- ningún intervalo entre cortes es múltiplo de 656 CIR (0 de 107);
+- no hay periodo fijo (estadístico de Rayleigh máximo 0.265, por debajo del percentil 95 con cortes al
+  azar, 0.284);
+- 34 de 107 intervalos están a ±2 CIR de un múltiplo de 64 (al azar, ~8), lo que sugiere un origen en el
+  procesado/almacenamiento por bloques.
+- Origen de los cortes **[NO VERIFICADO]**: hay que preguntarlo a los autores de la campaña. Hasta
+  entonces, describir el fichero como "109 tramos continuos de ~1 s" y no como "N grabaciones".
+
+**Tramos por conjunto** (separación `..._split.npz`):
+
+| Conjunto | Canales | Tramos distintos | Completos | Parciales |
+|---|---|---|---|---|
+| train | 10399 | 85 | 77 | 8 |
+| val | 1100 | 12 | 8 | 4 |
+| test | 900 | **8** | 3 | 5 |
+
+Tramos compartidos: train–val 0, **train–test 2**, val–test 0.
+
+**Variación entre tramos** (medias por tramo, ns; eta² = fracción de la varianza por canal explicada por
+el tramo):
+
+| Magnitud | Global | Mín | Mediana | Máx | Desv. entre tramos | eta² |
+|---|---|---|---|---|---|---|
+| RMS delay, sin umbral | 602.6 | 400.5 | 596.3 | 902.4 | 101.4 | 0.60 |
+| RMS delay, 20 dB | 209.4 | 107.1 | 202.9 | 288.5 | 38.3 | 0.81 |
+| Retardo medio, sin umbral | 200.4 | 96.1 | 197.8 | 334.7 | 51.0 | 0.67 |
+
+Con todos los umbrales eta² = 0.50–0.81: **la mayor parte de la variabilidad del canal es entre tramos**.
+Medias por conjunto (RMS delay sin umbral / 20 dB / retardo medio, ns): train 606.7 / 210.4 / 199.6; val
+614.7 / 207.3 / 205.4; test 547.1 / 206.2 / 210.5.
+
+**Implicaciones.**
+- Las unidades estadísticamente independientes son los ~109 tramos, no las 14199 CIR; test tiene 8.
+- El bootstrap por bloques debe compararse con el bootstrap por tramo (§6.10).
+- Doppler / correlación temporal: solo dentro de un tramo (resolución ~1/(127 · 7.616 ms) ≈ 1 Hz).
+- Memorización (§6.7): la referencia train–train debería excluir los vecinos del mismo tramo
+  (pendiente).
 
 ---
 
@@ -339,7 +413,8 @@ Dos fuentes de incertidumbre, tratadas por separado:
 2. **Muestreo del test** (pocos tramos independientes, §2.2): **bootstrap por bloques**, 1000 réplicas.
    En cada réplica:
    - test (900 canales, en orden temporal) se remuestrea en **bloques de 50 canales consecutivos**
-     (18 bloques con reemplazo), para respetar la correlación temporal (coherencia ~150–200 medidas);
+     (18 bloques con reemplazo), para respetar la correlación temporal (elegido antes de conocer los tramos
+     de §2.3; dentro de un tramo la coherencia es mayor, ver la sensibilidad al bloque más abajo);
    - train y val (referencias reales) se remuestrean igual, por bloques de 50;
    - los canales generados (i.i.d.) se remuestrean canal a canal, de forma independiente para cada semilla;
    - se recalculan las métricas frente al test remuestreado y se promedian entre las 5 semillas.
@@ -356,6 +431,10 @@ Dos fuentes de incertidumbre, tratadas por separado:
    (`per_channel_ber`, réplica de `BER.ber_curve` canal a canal; aquí se usan **todos** los canales de
    cada fuente, no los 900 primeros, por lo que las cifras de BER difieren algo de `ber_table.txt`).
    Ficheros: `bootstrap_ci.txt/.csv`. Los rasgos por canal se calculan una vez por fuente.
+   **Sensibilidad al bloque** (`seed_stats.py --block 25 | 100 | 500 | segment`, ficheros
+   `bootstrap_ci_block<B>.txt/.csv`; comparación con `bootstrap_sensitivity.py` →
+   `bootstrap_sensitivity.txt/.csv`). Con `--block segment` cada bloque es un tramo continuo de §2.3 (test,
+   train y val se remuestrean por tramos; el tamaño del conjunto remuestreado varía). Resultados en §6.10.
 
 **Sesgo conocido**: KS y |Δ| son distancias (≥ 0); al remuestrear, el ruido las aumenta, de modo que la
 distribución bootstrap está desplazada hacia arriba y el valor puntual (datos completos) puede quedar
@@ -756,6 +835,54 @@ Notas:
 8. **TDL-Rice** es significativamente peor que el gaussiano en casi todo (PDP, nulos, rizado, ZF, RMS,
    intervalo a 30 dB); solo empata en las métricas de energía concentrada.
 
+**Sensibilidad al tamaño de bloque del bootstrap** (`bootstrap_sensitivity.txt/.csv`; 1000 réplicas por
+bloque; "tramo" = un bloque por tramo continuo, §2.3). Número de modelos generativos (de 5)
+significativamente mejores / peores que el gaussiano, y anchura del IC95 del gaussiano relativa a la del
+bloque 50:
+
+| Métrica | Bloque 25 | 50 | 100 | 500 (no fiable) | **Tramo** |
+|---|---|---|---|---|---|
+| KS profundidad del nulo | 5/0 ×0.79 | 5/0 ×1.00 | 4/0 ×1.15 | 5/0 ×0.19 | **4/0 ×1.47** |
+| KS rizado | 5/0 ×0.79 | 5/0 ×1.00 | 5/0 ×1.15 | 5/0 ×0.17 | **4/0 ×1.46** |
+| KS ganancia ZF | 4/0 ×0.77 | 0/0 ×1.00 | 0/0 ×1.15 | 5/0 ×0.19 | 0/0 ×1.34 |
+| PDP MAE | 2/1 ×0.73 | 2/0 ×1.00 | 0/0 ×1.42 | 2/0 ×0.13 | 0/0 ×1.43 |
+| BER QPSK | 0/0 ×0.87 | 0/0 ×1.00 | 0/0 ×1.08 | 5/0 ×0.06 | 0/0 ×1.38 |
+| BER 16-QAM | 0/0 ×0.84 | 0/0 ×1.00 | 0/0 ×1.16 | 3/0 ×0.20 | 0/0 ×1.46 |
+| KS \|h\| | 1/2 ×0.75 | 0/1 ×1.00 | 0/1 ×1.31 | 1/3 ×0.15 | 0/1 ×1.33 |
+| KS RMS delay, sin umbral | 0/3 ×0.79 | 0/3 ×1.00 | 0/0 ×1.24 | 1/3 ×0.64 | 0/0 ×1.49 |
+| KS RMS delay, 20 dB | 0/0 ×0.83 | 0/0 ×1.00 | 0/0 ×1.38 | 0/2 ×0.53 | 0/0 ×1.83 |
+| KS fracción en fade | 0/0 ×0.85 | 0/0 ×1.00 | 0/0 ×1.16 | 4/0 ×0.44 | 0/0 ×1.44 |
+| KS eficiencia espectral | 0/0 ×0.82 | 0/0 ×1.00 | 0/0 ×1.21 | 5/0 ×0.39 | 0/0 ×1.61 |
+
+P(< Gaussian) por modelo en las métricas clave (bloque 50 → tramo):
+
+| Métrica | GAN | DCGAN | WGAN | DDPM | DDIM | Real train |
+|---|---|---|---|---|---|---|
+| Nulo | 0.995 → 0.980 | 0.994 → 0.977 | 0.995 → 0.982 | 0.977 → 0.927 | 0.992 → 0.979 | 0.991 → 0.974 |
+| Rizado | 0.998 → 0.989 | 0.998 → 0.987 | 0.998 → 0.992 | 0.992 → 0.968 | 0.995 → 0.983 | 0.996 → 0.979 |
+| Ganancia ZF | 0.947 → 0.863 | 0.953 → 0.873 | 0.963 → 0.905 | 0.884 → 0.756 | 0.956 → 0.884 | 0.953 → 0.870 |
+| PDP MAE | 0.860 → 0.818 | 0.863 → 0.806 | 0.999 → 0.972 | 0.040 → 0.147 | 0.985 → 0.934 | 0.556 → 0.495 |
+| BER QPSK | 0.672 → 0.633 | 0.701 → 0.647 | 0.757 → 0.685 | 0.592 → 0.560 | 0.732 → 0.666 | 0.707 → 0.655 |
+| RMS delay sin umbral | 0.007 → 0.048 | 0.010 → 0.048 | 0.009 → 0.050 | 0.490 → 0.505 | 0.870 → 0.762 | 0.625 → 0.526 |
+
+Lectura:
+- **Bloque 500 no es fiable** y no se usa: test (900 canales) solo tiene 2 bloques de 500, así que el
+  bootstrap apenas varía la referencia y infravalora mucho la varianza (IC95 ×0.06–0.64 más estrechos;
+  casi todo sale significativo).
+- Al pasar de bloques de 50 a tramos (8 en test), los IC95 se ensanchan ×1.3–1.8, coherente con que la
+  coherencia real dentro de un tramo es mayor que 50 CIR (§2.2).
+- **Robusto**: nulo y rizado siguen siendo significativos con bloque = tramo para GAN, DCGAN, WGAN y DDIM
+  (P = 0.977–0.992); DDPM pasa a no significativo (0.927 y 0.968). TDL-Rice sigue siendo peor.
+- **No robusto**:
+  - PDP de WGAN (0.972) y DDIM (0.934) queda al límite, ya no significativo al 5 % bilateral (WGAN sí
+    unilateral).
+  - RMS delay sin umbral: el "peor" de GAN/DCGAN/WGAN pasa a P ≈ 0.05.
+  - Ganancia ZF: solo significativa con bloque 25.
+- **BER**: no significativa con ningún bloque fiable.
+- **Cifra recomendada para el artículo**: bloque = tramo (es la unidad independiente, §2.3), con bloque 50
+  como referencia. Con 8 tramos en test el bootstrap es tosco; la validación cruzada por tramos daría más
+  potencia (§8).
+
 ---
 
 ## 7. Figuras (PDF y PNG) en `eval_results/sodupe_180_split_g200/`
@@ -789,19 +916,24 @@ figuras base.
 
 ## 8. Limitaciones y amenazas a la validez
 
-1. **Un solo test.** Test tiene 900 canales ≈ 5–7 tramos independientes del canal (tiempo de
-   coherencia ~200 medidas). La propia referencia real varía mucho según qué datos reales se comparen
+1. **Un solo test.** Test tiene 900 canales repartidos en solo **8 tramos continuos** (3 completos;
+   §2.3). La propia referencia real varía mucho según qué datos reales se comparen
    con test (p. ej. KS de la ganancia ZF: train 0.139, val 0.385; fracción en fade: 0.088 vs 0.369).
    Se cuantificó con 5 semillas y bootstrap por bloques (§4.2, §6.10): los IC95 son anchos y solo
    algunas diferencias son significativas (nulos, rizado, PDP de WGAN/DDIM; BER no). No se hizo
    validación cruzada rotando los bloques de test (daría más potencia estadística, pero exige
    reentrenar 5 modelos × k particiones).
-   - El tamaño de bloque del bootstrap (50) y el número de réplicas (1000) son elección propia; no se
-     estudió la sensibilidad al tamaño de bloque **[NO VERIFICADO]**.
+   - Sensibilidad al bloque del bootstrap (§6.10): con bloque = tramo siguen siendo significativos nulo y
+     rizado (4 de 5 generativos; DDPM no); el PDP de WGAN/DDIM queda al límite (P = 0.972 / 0.934) y el
+     RMS sin umbral deja de ser significativo. Bloque 500 no es fiable (2 bloques en test). El número de
+     réplicas (1000) es elección propia.
+   - La separación se hizo por bloques de 500 sin conocer los tramos: 2 tramos se reparten entre train y
+     test y, dentro de un tramo, ρ ≈ 0.3 a 200 CIR (§2.2), así que el hueco de 200 no descorrela del todo
+     en esos 2 tramos.
    - 5 semillas dan una estimación tosca de la desviación entre semillas (y DDPM es bimodal).
 2. **Deriva del canal (no estacionariedad).** Test es un tramo de la medida con estadística algo distinta
-   (RMS delay sin umbral 547 ns en test frente a ~609 ns en train y val [AD HOC: train 608.6, val
-   609.3 con la separación de huecos 100]). Por eso hay que leer los resultados frente a la referencia
+   (RMS delay sin umbral: test 547.1 ns, train 606.7, val 614.7; `recordings.py`). La estadística cambia
+   mucho entre tramos continuos (eta² = 0.50–0.81 en los retardos, §2.3). Por eso hay que leer los resultados frente a la referencia
    "real contra real" y no frente a cero.
 3. **Una sola medida/escenario** (sodupe_180). No se ha comprobado la generalización a otros escenarios
    (el autor tiene más medidas en OneDrive).
@@ -823,6 +955,11 @@ figuras base.
     así que no se modela la variación de la potencia del acoplamiento (pérdida de aislamiento) entre
     medidas. Los modelos clásicos también se reescalan a esa energía.
 11. **Los modelos son i.i.d.**: no generan secuencias temporales (sin Doppler ni correlación temporal).
+    El fichero no es continuo (109 tramos de ~1 s, §2.3): cualquier análisis temporal o Doppler debe
+    hacerse dentro de cada tramo. El origen de los cortes **[NO VERIFICADO]** (no son las grabaciones de
+    5 s de la campaña).
+15. **Referencia de memorización**: la distancia train–train al vecino más próximo (§6.7) incluye vecinos
+    del mismo tramo, muy correlados; una referencia que excluya el mismo tramo sería más justa (pendiente).
 12. **Componente del tap 0 con valores atípicos** (curtosis ~94; valores aislados a ~25σ) que ningún
     modelo reproduce; su origen físico (¿errores de estimación?, ¿eventos reales?) **[NO VERIFICADO]**.
 13. **Resolución en retardo**: 109.375 ns por tap; la ventana y el intervalo de retardo están
@@ -844,6 +981,9 @@ python evaluation_models/memorization.py
 python train_models/train.py --model gan dcgan wgan ddpm ddim --seed N   # → checkpoints/.../seed{N}/
 python evaluation_models/evaluation.py --config eval_results/sodupe_180_split_g200/seeds/seedN/evaluation_config.json
 python evaluation_models/seed_stats.py --cache <carpeta>   # tabla entre semillas + bootstrap (≈45 min, 4 procesos)
+python evaluation_models/recordings.py                     # tramos continuos, coherencia por tramo, variación entre tramos
+for b in 25 100 500 segment; do python evaluation_models/seed_stats.py --block $b --cache <carpeta>; done
+python evaluation_models/bootstrap_sensitivity.py           # comparación de IC95 y P entre bloques
 python evaluation_models/model_costs.py               # lee training_log.json de paths.save_dir
 python evaluation_models/sweep_sampling.py --steps 25 50 100 250 500 1000 --eta 0 0.5 1   # muestreo DDIM
 ```
