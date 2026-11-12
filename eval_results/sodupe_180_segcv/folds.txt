@@ -1,0 +1,9 @@
+Validación cruzada por tramos: 109 tramos, 14199 canales, 5 particiones, val ~10% (tramos enteros), semilla 42
+
+Partición 0 (data/datos_loopback/ch_sodupe_180_time_L200_fold0.npz): train 9931 canales / 79 tramos, val 1422 canales / 8 tramos, test 2846 canales / 22 tramos
+Partición 1 (data/datos_loopback/ch_sodupe_180_time_L200_fold1.npz): train 9790 canales / 76 tramos, val 1568 canales / 11 tramos, test 2841 canales / 22 tramos
+Partición 2 (data/datos_loopback/ch_sodupe_180_time_L200_fold2.npz): train 9890 canales / 75 tramos, val 1467 canales / 13 tramos, test 2842 canales / 21 tramos
+Partición 3 (data/datos_loopback/ch_sodupe_180_time_L200_fold3.npz): train 9817 canales / 79 tramos, val 1552 canales / 8 tramos, test 2830 canales / 22 tramos
+Partición 4 (data/datos_loopback/ch_sodupe_180_time_L200_fold4.npz): train 9805 canales / 73 tramos, val 1554 canales / 14 tramos, test 2840 canales / 22 tramos
+
+Tramos de test por partición: 0: [9, 10, 12, 18, 24, 25, 33, 38, 45, 50, 71, 74, 84, 87, 90, 91, 93, 95, 99, 102, 104, 106]; 1: [3, 5, 13, 22, 26, 29, 31, 39, 44, 52, 56, 59, 61, 68, 70, 79, 83, 86, 97, 98, 101, 107]; 2: [0, 4, 8, 11, 16, 19, 21, 28, 43, 48, 51, 55, 57, 60, 75, 77, 78, 82, 96, 103, 105]; 3: [6, 14, 23, 32, 37, 40, 42, 47, 53, 62, 66, 69, 73, 76, 80, 81, 85, 89, 92, 94, 100, 108]; 4: [1, 2, 7, 15, 17, 20, 27, 30, 34, 35, 36, 41, 46, 49, 54, 58, 63, 64, 65, 67, 72, 88]
