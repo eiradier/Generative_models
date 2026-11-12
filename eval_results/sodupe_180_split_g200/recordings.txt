@@ -1,0 +1,84 @@
+Estructura temporal de data/medidas/ch_sodupe_180_time.npy: 14218 CIR, 200 taps; 14199 conservadas tras el filtro de energía (descartadas: [2937, 8796, 8797, 8798, 8799, 8800, 8801, 8802, 8803, 8804, 8805, 8806, 8807, 8808, 8809, 8810, 8811, 8812, 13748])
+Periodo entre CIR supuesto: 7.616 ms (de la campaña de medida; no consta en el fichero) -> duración total 108.3 s
+
+1. DISCONTINUIDADES (w = 3; r = cambio a través del corte / cambio a cada lado)
+Histograma de log10(r) (todas las posiciones):
+   [-1.00, -0.75)      4
+   [-0.75, -0.50)      2
+   [-0.50, -0.25)      3
+   [-0.25,  0.00)     28
+   [ 0.00,  0.25)    155
+   [ 0.25,  0.50)   4591
+   [ 0.50,  0.75)   8787
+   [ 0.75,  1.00)    225
+   [ 1.00,  1.25)      5
+   [ 1.25,  1.50)     12
+   [ 1.50,  1.75)     16
+   [ 1.75,  2.00)     19
+   [ 2.00,  2.25)     24
+   [ 2.25,  2.50)     18
+   [ 2.50,  2.75)     20
+   [ 2.75,  3.00)     51
+   [ 3.00,  3.25)    117
+   [ 3.25,  3.50)     74
+   [ 3.50,  3.75)     46
+   [ 3.75,  4.00)      7
+   [ 4.00,  4.25)      0
+   [ 4.25,  4.50)      0
+   mediana de r: 3.42
+Cortes según el umbral (robustez): r>30: 123, r>100: 121, r>300: 108, r>1000: 96
+Umbral elegido r > 100: 121 cortes; tras unir los tramos de < 10 CIR (transitorios) al siguiente: 108 cortes -> 109 tramos continuos
+Longitud de los tramos (CIR): mín 11, p25 65, mediana 127, p75 191, máx 452, media 130.4 (0.99 s; máx 3.44 s)
+Hipótesis de grabaciones de 5 s: 5 s / periodo = 657 CIR por grabación -> 21.7 grabaciones en el fichero
+Periodicidad de los cortes (Rayleigh, periodos 30–1500 CIR): máx 0.265 en P = 67.8; percentil 95 con cortes al azar: 0.284 -> SIN periodo fijo
+Intervalos entre cortes a ±2 CIR de un múltiplo de 64: 34 de 107 (al azar se esperarían ~8)
+Intervalos entre cortes a ±2 CIR de un múltiplo de 656: 0 de 107 (al azar se esperarían ~1)
+Parte variable: correlación entre extremos de un mismo tramo (tramos >= 100 CIR): mediana 0.470 (rango -0.57–0.97); a través de un corte (±3 CIR): mediana -0.200
+
+Tramos por conjunto (dataset filtrado y separación de data/datos_loopback/ch_sodupe_180_time_L200_split.npz):
+   train: 10399 canales,  85 tramos distintos (77 completos, 8 parciales)
+   val  :  1100 canales,  12 tramos distintos (8 completos, 4 parciales)
+   test :   900 canales,   8 tramos distintos (3 completos, 5 parciales)
+   tramos compartidos train–val: 0
+   tramos compartidos train–test: 2
+   tramos compartidos val–test: 0
+
+2. COHERENCIA TEMPORAL de la parte variable (v = x - media global), pares de canales conservados
+     k    t (s)  rho mismo tramo   pares  rho todos   pares  rho tramo, media local
+     1    0.008            0.989   14087      0.985   14195                   0.939
+     2    0.015            0.986   13977      0.972   14193                   0.920
+     3    0.023            0.983   13867      0.960   14191                   0.904
+     5    0.038            0.982   13648      0.941   14187                   0.892
+    10    0.076            0.975   13103      0.890   14177                   0.849
+    20    0.152            0.952   12025      0.784   14160                   0.716
+    30    0.228            0.921   10949      0.677   14150                   0.548
+    50    0.381            0.846    8890      0.478   14130                   0.195
+    75    0.571            0.751    6709      0.303   14105                  -0.148
+   100    0.762            0.664    5082      0.208   14080                  -0.360
+   150    1.142            0.503    2575      0.071   14030                  -0.515
+   200    1.523            0.295    1082      0.018   13980                  -0.495
+   300    2.285            0.345     227      0.009   13880                  -0.482
+   400    3.046            0.692      52      0.035   13780                  -0.510
+   rho < 0.9                  : mismo tramo k =   36.0 (0.274 s) | todos los pares k =    9.0 (0.069 s) | mismo tramo, media local k =    4.2 (0.032 s)
+   rho < 0.5                  : mismo tramo k =  150.8 (1.149 s) | todos los pares k =   47.6 (0.363 s) | mismo tramo, media local k =   32.6 (0.249 s)
+   rho < descorrelación (0.1) : mismo tramo no se alcanza | todos los pares k =  136.6 (1.040 s) | mismo tramo, media local k =   56.1 (0.427 s)
+   rho < cero                 : mismo tramo no se alcanza | todos los pares k =  311.6 (2.373 s) | mismo tramo, media local k =   63.2 (0.481 s)
+   (los valores con k grande se basan en pocos tramos: pares a k = 200: 1082)
+
+3. VARIACIÓN ENTRE TRAMOS (109 tramos; estadística de las medias por tramo, en ns; eta² = fracción de la varianza por canal explicada por el tramo)
+                             global      mín      p10  mediana      p90      máx     std  std (>=100)   eta²
+mean_delay_sin_umbral         200.4     96.1    136.2    197.8    268.3    334.7    51.0         46.3   0.67
+rms_delay_sin_umbral          602.6    400.5    483.8    596.3    736.3    902.4   101.4         91.9   0.60
+mean_delay_th40dB             186.5     76.1    119.4    184.1    258.7    316.0    52.4         47.4   0.69
+rms_delay_th40dB              455.5    290.1    372.0    438.4    556.6    695.2    77.8         69.0   0.52
+mean_delay_th30dB             158.6     49.8     90.8    152.2    231.0    270.5    52.5         46.7   0.74
+rms_delay_th30dB              235.9    159.8    180.7    228.3    274.0    398.2    43.8         41.9   0.50
+mean_delay_th25dB             154.3     45.5     85.5    149.3    225.5    267.3    52.1         46.4   0.79
+rms_delay_th25dB              219.2    143.5    170.9    213.2    259.6    297.5    35.7         34.9   0.72
+mean_delay_th20dB             149.5     40.2     83.2    143.9    223.9    263.6    53.1         47.5   0.81
+rms_delay_th20dB              209.4    107.1    157.7    202.9    257.1    288.5    38.3         37.7   0.81
+
+Por conjunto (media de los canales, ns):
+   train: rms_delay_sin_umbral 606.7, rms_delay_th20dB 210.4, mean_delay_sin_umbral 199.6
+   val  : rms_delay_sin_umbral 614.7, rms_delay_th20dB 207.3, mean_delay_sin_umbral 205.4
+   test : rms_delay_sin_umbral 547.1, rms_delay_th20dB 206.2, mean_delay_sin_umbral 210.5

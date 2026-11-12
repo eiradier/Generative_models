@@ -14,7 +14,8 @@ Parte B (métricas principales): bootstrap por bloques.
         test para ambos: comparación emparejada).
   - La referencia "real contra real" (train y val frente a test) se trata igual: train y val también se
     remuestrean por bloques.
-  -> bootstrap_ci.txt / .csv
+  - --block segment: un bloque por tramo continuo entre discontinuidades (recordings.py).
+  -> bootstrap_ci.txt / .csv (bloque 50) o bootstrap_ci_block<valor>.txt / .csv (otros bloques)
 
 Nota: KS y |Δlog10 BER| son estadísticos de error absoluto y su distribución bootstrap está sesgada hacia
 arriba (al remuestrear, el ruido nunca reduce una distancia de cero): el valor puntual puede quedar cerca
@@ -148,7 +149,14 @@ def metric_values(src, idx, ref, ridx, mask, feat_keys):
     return out
 
 
-def block_resample(n, block, rng):
+def block_resample(n, block, rng, labels=None):
+    """Índices remuestreados por bloques. block: tamaño fijo (canales consecutivos) o, si labels no es
+    None, un bloque por cada valor distinto de labels (tramo continuo de recordings.py); se sortean tantos
+    tramos como hay, con reemplazo (el número de canales de la réplica varía)."""
+    if labels is not None:
+        groups = [np.where(labels == u)[0] for u in np.unique(labels)]
+        pick = rng.integers(0, len(groups), len(groups))
+        return np.concatenate([groups[j] for j in pick])
     starts = np.arange(0, n, block)
     pick = rng.choice(starts, size=len(starts), replace=True)
     return np.concatenate([np.arange(s, min(s + block, n)) for s in pick])
@@ -168,7 +176,10 @@ def main():
                         help="Carpetas de evaluación (una por semilla). Por defecto paths.save_dir y "
                              "paths.save_dir/seeds/seed*")
     parser.add_argument("--n-boot", type=int, default=1000)
-    parser.add_argument("--block", type=int, default=50, help="Tamaño de bloque del bootstrap de test")
+    parser.add_argument("--block", default="50",
+                        help="Tamaño de bloque del bootstrap (canales consecutivos), o 'segment' para un bloque "
+                             "por tramo continuo (recordings.npz de recordings.py en paths.save_dir). Con un "
+                             "valor distinto de 50 los ficheros de salida llevan el sufijo _block<valor>")
     parser.add_argument("--out", default=None, help="Carpeta de salida (por defecto paths.save_dir)")
     parser.add_argument("--workers", type=int, default=os.cpu_count() or 1,
                         help="Procesos para las réplicas del bootstrap")
@@ -181,6 +192,9 @@ def main():
     runs = args.runs or [base] + sorted(glob.glob(os.path.join(base, "seeds", "seed*")))
     runs = [ev.repo_path(r) for r in runs if os.path.exists(os.path.join(ev.repo_path(r), "metrics.pkl"))]
     out_dir = ev.repo_path(args.out) if args.out else base
+    by_segment = args.block == "segment"
+    block = None if by_segment else int(args.block)
+    suffix = "" if args.block == "50" else f"_block{args.block}"
     os.makedirs(out_dir, exist_ok=True)
     print(f"{len(runs)} ejecuciones:", *runs, sep="\n  ")
     seed_table(runs, out_dir)
@@ -226,17 +240,22 @@ def main():
             if os.path.exists(p):
                 srcs[(m, r)] = get_source((m, r), lambda p=p: ev.to_complex(np.load(p)))
     test = srcs[("real", "test")]
+    labels = {k: None for k in real}
+    if by_segment:
+        seg_f = np.load(os.path.join(base, "recordings.npz"))["segment_filtered"]
+        labels = {k: seg_f[np.sort(split[k])] for k in real}
+        print("Tramos por conjunto: " + ", ".join(f"{k} {len(np.unique(v))}" for k, v in labels.items()), flush=True)
     feat_keys = [k for k in test.feat if not k.startswith("_")]
     mask = test.p.mean(0) > test.p.mean(0).max() * 1e-6
     models = [m for m in GEN_MODELS + CLASSIC if all((m, r) in srcs for r in runs)]
     print(f"Modelos con todas las semillas: {models}", flush=True)
 
     def all_metrics(rng):
-        ridx = block_resample(test.n, args.block, rng) if rng is not None else np.arange(test.n)
+        ridx = block_resample(test.n, block, rng, labels["test"]) if rng is not None else np.arange(test.n)
         res = {}
         for k in ("train", "val"):
             s = srcs[("real", k)]
-            idx = block_resample(s.n, args.block, rng) if rng is not None else np.arange(s.n)
+            idx = block_resample(s.n, block, rng, labels[k]) if rng is not None else np.arange(s.n)
             res[f"real_{k}"] = metric_values(s, idx, test, ridx, mask, feat_keys)
         for m in models:
             vals = []
@@ -256,7 +275,7 @@ def main():
     # Cada réplica usa su propio generador ([seed, b]): el resultado no depende del orden ni del número de
     # procesos, y las réplicas ya hechas (guardadas en --cache) se pueden reutilizar al reanudar
     done = {}
-    part = os.path.join(cache, "replicates.pkl") if cache else None
+    part = os.path.join(cache, f"replicates{suffix}.pkl") if cache else None
     if part and os.path.exists(part):
         with open(part, "rb") as f:
             done = pickle.load(f)
@@ -284,14 +303,16 @@ def main():
                    "p_better_than_gauss": float(np.mean(boot[n][k] < boot[REF][k])) if REF in boot and n != REF
                    else np.nan}
             rows.append(row)
-    with open(os.path.join(out_dir, "bootstrap_ci.csv"), "w", newline="") as f:
+    with open(os.path.join(out_dir, f"bootstrap_ci{suffix}.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)
 
     label = {"real_train": "Real train", "real_val": "Real val", **ev.MODEL_LABELS}
-    lines = [f"Bootstrap por bloques ({args.n_boot} réplicas; test en bloques de {args.block} canales "
-             f"consecutivos, generados canal a canal) y {len(runs)} semillas de entrenamiento.",
+    blk = ("un bloque por tramo continuo (recordings.py)" if by_segment
+           else f"bloques de {block} canales consecutivos")
+    lines = [f"Bootstrap por bloques ({args.n_boot} réplicas; test, train y val en {blk}; "
+             f"generados canal a canal) y {len(runs)} semillas de entrenamiento.",
              "mean ± std: media y desviación típica entre semillas (datos completos). IC95: intervalo del "
              "bootstrap de la media entre semillas.",
              "P(<Gauss): fracción de réplicas en que la fuente mejora al gaussiano (emparejada; > 0.975 o "
@@ -303,9 +324,9 @@ def main():
             pb = "" if np.isnan(r["p_better_than_gauss"]) else f"{r['p_better_than_gauss']:.3f}"
             lines.append(f"  {label[r['source']]:<12} {r['mean']:>9.4f} ± {r['seed_std']:<8.4f} "
                          f"IC95 [{r['ci_low']:.4f}, {r['ci_high']:.4f}]   P(<Gauss) {pb}")
-    with open(os.path.join(out_dir, "bootstrap_ci.txt"), "w", encoding="utf-8") as f:
+    with open(os.path.join(out_dir, f"bootstrap_ci{suffix}.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"Resultados en {out_dir}/bootstrap_ci.txt y seeds_metrics_summary.txt")
+    print(f"Resultados en {out_dir}/bootstrap_ci{suffix}.txt y seeds_metrics_summary.txt")
 
 
 if __name__ == "__main__":
