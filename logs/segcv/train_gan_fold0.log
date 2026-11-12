@@ -1,0 +1,75 @@
+
+===== Entrenando GAN con checkpoints/sodupe_180_segcv/fold0/gans_config.json (semilla 42) =====
+Separación train/val: 9931 canales de entrenamiento, 1422 de validación
+Normalización por tap (escala 4.48, 0.0100% de valores recortados); scaler guardado en checkpoints/sodupe_180_segcv/fold0/GAN_Conv1D
+Epoch [0/300] G_loss: 0.6758 | D_loss: 0.6554 | score: 9.887 (PDP 4.79 dB, KS 0.509)
+Nuevo mejor modelo en 0
+Epoch [1/300] G_loss: 0.7174 | D_loss: 0.6305 | score: 5.554 (PDP 1.38 dB, KS 0.417)
+Nuevo mejor modelo en 1
+Epoch [2/300] G_loss: 0.7516 | D_loss: 0.6812 | score: 5.268 (PDP 1.56 dB, KS 0.370)
+Nuevo mejor modelo en 2
+Epoch [3/300] G_loss: 0.7286 | D_loss: 0.6579 | score: 5.256 (PDP 1.45 dB, KS 0.381)
+Nuevo mejor modelo en 3
+Epoch [4/300] G_loss: 0.7681 | D_loss: 0.6449 | score: 4.142 (PDP 1.25 dB, KS 0.289)
+Nuevo mejor modelo en 4
+Epoch [5/300] G_loss: 0.7424 | D_loss: 0.6527 | score: 4.154 (PDP 1.76 dB, KS 0.240)
+Epoch [6/300] G_loss: 0.7290 | D_loss: 0.6764 | score: 4.822 (PDP 1.12 dB, KS 0.370)
+Epoch [7/300] G_loss: 0.7406 | D_loss: 0.6753 | score: 3.722 (PDP 1.28 dB, KS 0.245)
+Nuevo mejor modelo en 7
+Epoch [8/300] G_loss: 0.7229 | D_loss: 0.6736 | score: 2.376 (PDP 1.18 dB, KS 0.119)
+Nuevo mejor modelo en 8
+Epoch [9/300] G_loss: 0.7067 | D_loss: 0.6772 | score: 2.595 (PDP 1.29 dB, KS 0.131)
+Epoch [10/300] G_loss: 0.7157 | D_loss: 0.6796 | score: 3.184 (PDP 1.38 dB, KS 0.180)
+Epoch [11/300] G_loss: 0.7195 | D_loss: 0.6806 | score: 4.375 (PDP 1.50 dB, KS 0.288)
+Epoch [12/300] G_loss: 0.7209 | D_loss: 0.6841 | score: 2.624 (PDP 1.16 dB, KS 0.147)
+Epoch [13/300] G_loss: 0.7032 | D_loss: 0.6853 | score: 3.871 (PDP 1.14 dB, KS 0.273)
+Epoch [14/300] G_loss: 0.7035 | D_loss: 0.6881 | score: 3.762 (PDP 1.23 dB, KS 0.253)
+Epoch [15/300] G_loss: 0.7035 | D_loss: 0.6895 | score: 2.963 (PDP 1.18 dB, KS 0.178)
+Epoch [16/300] G_loss: 0.6990 | D_loss: 0.6889 | score: 2.018 (PDP 1.11 dB, KS 0.090)
+Nuevo mejor modelo en 16
+Epoch [17/300] G_loss: 0.7011 | D_loss: 0.6876 | score: 1.893 (PDP 1.11 dB, KS 0.078)
+Nuevo mejor modelo en 17
+Epoch [18/300] G_loss: 0.7023 | D_loss: 0.6868 | score: 2.118 (PDP 1.02 dB, KS 0.110)
+Epoch [19/300] G_loss: 0.7026 | D_loss: 0.6871 | score: 2.106 (PDP 1.14 dB, KS 0.097)
+Epoch [20/300] G_loss: 0.7041 | D_loss: 0.6871 | score: 1.980 (PDP 1.09 dB, KS 0.089)
+Epoch [21/300] G_loss: 0.7031 | D_loss: 0.6868 | score: 2.150 (PDP 1.11 dB, KS 0.104)
+Epoch [22/300] G_loss: 0.7007 | D_loss: 0.6869 | score: 1.909 (PDP 1.01 dB, KS 0.089)
+Epoch [23/300] G_loss: 0.7004 | D_loss: 0.6877 | score: 2.090 (PDP 1.09 dB, KS 0.100)
+Epoch [24/300] G_loss: 0.7007 | D_loss: 0.6876 | score: 2.365 (PDP 1.14 dB, KS 0.122)
+Epoch [25/300] G_loss: 0.6993 | D_loss: 0.6875 | score: 2.465 (PDP 1.14 dB, KS 0.133)
+Epoch [26/300] G_loss: 0.6999 | D_loss: 0.6879 | score: 2.408 (PDP 1.14 dB, KS 0.126)
+Epoch [27/300] G_loss: 0.7024 | D_loss: 0.6875 | score: 2.729 (PDP 1.11 dB, KS 0.162)
+Epoch [28/300] G_loss: 0.7013 | D_loss: 0.6872 | score: 2.648 (PDP 1.18 dB, KS 0.147)
+Epoch [29/300] G_loss: 0.6995 | D_loss: 0.6871 | score: 2.593 (PDP 1.10 dB, KS 0.149)
+Epoch [30/300] G_loss: 0.7034 | D_loss: 0.6868 | score: 2.517 (PDP 1.04 dB, KS 0.148)
+Epoch [31/300] G_loss: 0.7036 | D_loss: 0.6871 | score: 2.585 (PDP 1.07 dB, KS 0.152)
+Epoch [32/300] G_loss: 0.6995 | D_loss: 0.6865 | score: 2.601 (PDP 1.04 dB, KS 0.156)
+Epoch [33/300] G_loss: 0.7025 | D_loss: 0.6864 | score: 2.531 (PDP 1.05 dB, KS 0.148)
+Epoch [34/300] G_loss: 0.7018 | D_loss: 0.6863 | score: 2.412 (PDP 1.06 dB, KS 0.135)
+Epoch [35/300] G_loss: 0.7028 | D_loss: 0.6860 | score: 2.286 (PDP 1.05 dB, KS 0.124)
+Epoch [36/300] G_loss: 0.7025 | D_loss: 0.6857 | score: 2.668 (PDP 1.12 dB, KS 0.154)
+Epoch [37/300] G_loss: 0.7027 | D_loss: 0.6858 | score: 2.150 (PDP 1.17 dB, KS 0.098)
+Epoch [38/300] G_loss: 0.7025 | D_loss: 0.6856 | score: 2.417 (PDP 1.10 dB, KS 0.131)
+Epoch [39/300] G_loss: 0.7016 | D_loss: 0.6855 | score: 2.296 (PDP 1.02 dB, KS 0.128)
+Epoch [40/300] G_loss: 0.7033 | D_loss: 0.6850 | score: 2.433 (PDP 0.98 dB, KS 0.146)
+Epoch [41/300] G_loss: 0.7020 | D_loss: 0.6849 | score: 2.285 (PDP 0.93 dB, KS 0.136)
+Epoch [42/300] G_loss: 0.7026 | D_loss: 0.6847 | score: 2.089 (PDP 1.11 dB, KS 0.098)
+Epoch [43/300] G_loss: 0.7029 | D_loss: 0.6845 | score: 2.505 (PDP 1.02 dB, KS 0.148)
+Epoch [44/300] G_loss: 0.7022 | D_loss: 0.6844 | score: 2.297 (PDP 1.13 dB, KS 0.116)
+Epoch [45/300] G_loss: 0.7031 | D_loss: 0.6845 | score: 2.097 (PDP 0.95 dB, KS 0.115)
+Epoch [46/300] G_loss: 0.7033 | D_loss: 0.6844 | score: 2.237 (PDP 1.00 dB, KS 0.124)
+Epoch [47/300] G_loss: 0.7032 | D_loss: 0.6844 | score: 2.466 (PDP 1.00 dB, KS 0.147)
+Epoch [48/300] G_loss: 0.7029 | D_loss: 0.6845 | score: 2.387 (PDP 1.09 dB, KS 0.130)
+Epoch [49/300] G_loss: 0.7030 | D_loss: 0.6842 | score: 2.416 (PDP 1.00 dB, KS 0.142)
+Epoch [50/300] G_loss: 0.7030 | D_loss: 0.6842 | score: 2.363 (PDP 1.10 dB, KS 0.126)
+Epoch [51/300] G_loss: 0.7028 | D_loss: 0.6841 | score: 2.539 (PDP 1.13 dB, KS 0.141)
+Epoch [52/300] G_loss: 0.7021 | D_loss: 0.6842 | score: 2.594 (PDP 1.00 dB, KS 0.160)
+Epoch [53/300] G_loss: 0.7030 | D_loss: 0.6841 | score: 2.588 (PDP 1.07 dB, KS 0.152)
+Epoch [54/300] G_loss: 0.7029 | D_loss: 0.6840 | score: 2.283 (PDP 0.93 dB, KS 0.135)
+Epoch [55/300] G_loss: 0.7041 | D_loss: 0.6842 | score: 2.175 (PDP 0.96 dB, KS 0.121)
+Epoch [56/300] G_loss: 0.7030 | D_loss: 0.6839 | score: 2.426 (PDP 1.03 dB, KS 0.139)
+Epoch [57/300] G_loss: 0.7040 | D_loss: 0.6840 | score: 2.418 (PDP 1.03 dB, KS 0.139)
+Early stopping en época 57 (sin mejora en 40 épocas)
+Entrenamiento completado. Modelos guardados en checkpoints/sodupe_180_segcv/fold0/GAN_Conv1D
+===== GAN terminado en 4.6 min =====
+Generado gan (3000, 2, 200)
