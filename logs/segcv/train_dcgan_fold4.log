@@ -1,0 +1,68 @@
+
+===== Entrenando DCGAN con checkpoints/sodupe_180_segcv/fold4/gans_config.json (semilla 42) =====
+Separación train/val: 9805 canales de entrenamiento, 1554 de validación
+Normalización por tap (escala 4.82, 0.0100% de valores recortados); scaler guardado en checkpoints/sodupe_180_segcv/fold4/DCGAN_Conv1D
+Epoch 1/300 | G_loss=0.4589 | D_loss=0.2204 | score=12.726 (PDP 3.99 dB, KS 0.873)
+Nuevo mejor modelo en la época 1 | score=12.726
+Epoch 2/300 | G_loss=0.4074 | D_loss=0.1227 | score=5.662 (PDP 2.73 dB, KS 0.293)
+Nuevo mejor modelo en la época 2 | score=5.662
+Epoch 3/300 | G_loss=0.3136 | D_loss=0.1735 | score=4.674 (PDP 1.47 dB, KS 0.321)
+Nuevo mejor modelo en la época 3 | score=4.674
+Epoch 4/300 | G_loss=0.2560 | D_loss=0.1855 | score=5.872 (PDP 1.93 dB, KS 0.394)
+Epoch 5/300 | G_loss=0.2670 | D_loss=0.1625 | score=5.503 (PDP 1.20 dB, KS 0.430)
+Epoch 6/300 | G_loss=0.2522 | D_loss=0.1776 | score=3.202 (PDP 1.23 dB, KS 0.198)
+Nuevo mejor modelo en la época 6 | score=3.202
+Epoch 7/300 | G_loss=0.2427 | D_loss=0.1796 | score=1.751 (PDP 1.19 dB, KS 0.056)
+Nuevo mejor modelo en la época 7 | score=1.751
+Epoch 8/300 | G_loss=0.2430 | D_loss=0.1836 | score=3.087 (PDP 1.10 dB, KS 0.199)
+Epoch 9/300 | G_loss=0.2334 | D_loss=0.1874 | score=1.771 (PDP 0.97 dB, KS 0.080)
+Epoch 10/300 | G_loss=0.2270 | D_loss=0.1904 | score=1.776 (PDP 0.78 dB, KS 0.099)
+Epoch 11/300 | G_loss=0.2162 | D_loss=0.1944 | score=1.701 (PDP 0.87 dB, KS 0.083)
+Nuevo mejor modelo en la época 11 | score=1.701
+Epoch 12/300 | G_loss=0.2164 | D_loss=0.1958 | score=1.400 (PDP 0.85 dB, KS 0.055)
+Nuevo mejor modelo en la época 12 | score=1.400
+Epoch 13/300 | G_loss=0.2112 | D_loss=0.1988 | score=1.795 (PDP 0.83 dB, KS 0.096)
+Epoch 14/300 | G_loss=0.2131 | D_loss=0.1967 | score=1.904 (PDP 0.75 dB, KS 0.115)
+Epoch 15/300 | G_loss=0.2122 | D_loss=0.1965 | score=2.137 (PDP 0.76 dB, KS 0.138)
+Epoch 16/300 | G_loss=0.2122 | D_loss=0.1966 | score=1.654 (PDP 0.66 dB, KS 0.099)
+Epoch 17/300 | G_loss=0.2108 | D_loss=0.1965 | score=2.318 (PDP 0.73 dB, KS 0.159)
+Epoch 18/300 | G_loss=0.2113 | D_loss=0.1963 | score=2.178 (PDP 0.76 dB, KS 0.142)
+Epoch 19/300 | G_loss=0.2130 | D_loss=0.1957 | score=1.808 (PDP 0.79 dB, KS 0.102)
+Epoch 20/300 | G_loss=0.2112 | D_loss=0.1967 | score=2.350 (PDP 0.70 dB, KS 0.165)
+Epoch 21/300 | G_loss=0.2119 | D_loss=0.1964 | score=3.043 (PDP 0.64 dB, KS 0.240)
+Epoch 22/300 | G_loss=0.2109 | D_loss=0.1964 | score=2.022 (PDP 0.66 dB, KS 0.136)
+Epoch 23/300 | G_loss=0.2115 | D_loss=0.1963 | score=1.950 (PDP 0.66 dB, KS 0.129)
+Epoch 24/300 | G_loss=0.2111 | D_loss=0.1961 | score=1.683 (PDP 0.72 dB, KS 0.096)
+Epoch 25/300 | G_loss=0.2119 | D_loss=0.1955 | score=2.552 (PDP 0.69 dB, KS 0.186)
+Epoch 26/300 | G_loss=0.2123 | D_loss=0.1954 | score=2.426 (PDP 0.72 dB, KS 0.170)
+Epoch 27/300 | G_loss=0.2122 | D_loss=0.1953 | score=2.232 (PDP 0.71 dB, KS 0.152)
+Epoch 28/300 | G_loss=0.2119 | D_loss=0.1952 | score=2.577 (PDP 0.69 dB, KS 0.189)
+Epoch 29/300 | G_loss=0.2128 | D_loss=0.1950 | score=1.744 (PDP 0.64 dB, KS 0.110)
+Epoch 30/300 | G_loss=0.2126 | D_loss=0.1945 | score=2.018 (PDP 0.64 dB, KS 0.138)
+Epoch 31/300 | G_loss=0.2126 | D_loss=0.1948 | score=2.048 (PDP 0.63 dB, KS 0.142)
+Epoch 32/300 | G_loss=0.2126 | D_loss=0.1946 | score=1.783 (PDP 0.58 dB, KS 0.121)
+Epoch 33/300 | G_loss=0.2127 | D_loss=0.1944 | score=3.237 (PDP 0.68 dB, KS 0.255)
+Epoch 34/300 | G_loss=0.2138 | D_loss=0.1946 | score=1.991 (PDP 0.65 dB, KS 0.134)
+Epoch 35/300 | G_loss=0.2127 | D_loss=0.1947 | score=2.195 (PDP 0.58 dB, KS 0.162)
+Epoch 36/300 | G_loss=0.2132 | D_loss=0.1946 | score=1.620 (PDP 0.59 dB, KS 0.103)
+Epoch 37/300 | G_loss=0.2127 | D_loss=0.1946 | score=1.919 (PDP 0.58 dB, KS 0.134)
+Epoch 38/300 | G_loss=0.2126 | D_loss=0.1945 | score=2.460 (PDP 0.66 dB, KS 0.180)
+Epoch 39/300 | G_loss=0.2131 | D_loss=0.1946 | score=2.124 (PDP 0.65 dB, KS 0.147)
+Epoch 40/300 | G_loss=0.2122 | D_loss=0.1948 | score=1.918 (PDP 0.62 dB, KS 0.130)
+Epoch 41/300 | G_loss=0.2130 | D_loss=0.1948 | score=1.941 (PDP 0.61 dB, KS 0.133)
+Epoch 42/300 | G_loss=0.2128 | D_loss=0.1946 | score=1.655 (PDP 0.65 dB, KS 0.101)
+Epoch 43/300 | G_loss=0.2132 | D_loss=0.1946 | score=1.745 (PDP 0.63 dB, KS 0.112)
+Epoch 44/300 | G_loss=0.2132 | D_loss=0.1947 | score=2.169 (PDP 0.61 dB, KS 0.156)
+Epoch 45/300 | G_loss=0.2133 | D_loss=0.1945 | score=1.688 (PDP 0.66 dB, KS 0.102)
+Epoch 46/300 | G_loss=0.2131 | D_loss=0.1944 | score=1.902 (PDP 0.61 dB, KS 0.129)
+Epoch 47/300 | G_loss=0.2133 | D_loss=0.1943 | score=2.479 (PDP 0.63 dB, KS 0.185)
+Epoch 48/300 | G_loss=0.2134 | D_loss=0.1940 | score=1.507 (PDP 0.61 dB, KS 0.090)
+Epoch 49/300 | G_loss=0.2140 | D_loss=0.1940 | score=1.606 (PDP 0.60 dB, KS 0.101)
+Epoch 50/300 | G_loss=0.2137 | D_loss=0.1938 | score=1.606 (PDP 0.62 dB, KS 0.098)
+Epoch 51/300 | G_loss=0.2138 | D_loss=0.1936 | score=1.682 (PDP 0.59 dB, KS 0.110)
+Epoch 52/300 | G_loss=0.2140 | D_loss=0.1936 | score=2.259 (PDP 0.60 dB, KS 0.166)
+Early stopping en época 52 (sin mejora en 40 épocas)
+Entrenamiento completado. Modelos guardados en checkpoints/sodupe_180_segcv/fold4/DCGAN_Conv1D
+Mejor score: 1.400
+===== DCGAN terminado en 4.5 min =====
+Generado dcgan (3000, 2, 200)
