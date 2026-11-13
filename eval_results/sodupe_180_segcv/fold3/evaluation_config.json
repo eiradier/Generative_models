@@ -1,0 +1,97 @@
+{
+  "experiment": {
+    "seed": 42
+  },
+  "data": {
+    "path": "data/datos_loopback/ch_sodupe_180_time_L200.npy",
+    "split_file": "data/datos_loopback/ch_sodupe_180_time_L200_fold3.npz",
+    "subset": "test",
+    "signal_length": 200
+  },
+  "sampling": {
+    "bandwidth_hz": 8000000.0
+  },
+  "models": {
+    "gan": {
+      "checkpoint": "checkpoints/sodupe_180_segcv/fold3/GAN_Conv1D/best_model.pth"
+    },
+    "dcgan": {
+      "checkpoint": "checkpoints/sodupe_180_segcv/fold3/DCGAN_Conv1D/model_best.pth"
+    },
+    "wgan": {
+      "checkpoint": "checkpoints/sodupe_180_segcv/fold3/WGAN_Conv1D/best_model.pth"
+    },
+    "ddpm": {
+      "checkpoint": "checkpoints/sodupe_180_segcv/fold3/DDPM/best_model.pth",
+      "T": 1000,
+      "time_emb_dim": 64
+    },
+    "ddim": {
+      "checkpoint": "checkpoints/sodupe_180_segcv/fold3/DDIM/best_model.pth",
+      "T": 1000,
+      "time_emb_dim": 64,
+      "sampling_steps": 250,
+      "eta": 0.0
+    }
+  },
+  "evaluation": {
+    "models": [
+      "gan",
+      "dcgan",
+      "wgan",
+      "ddpm",
+      "ddim",
+      "tdl",
+      "gauss"
+    ],
+    "num_samples": 3000,
+    "batch_size": 500,
+    "coherence_thresholds": [
+      0.9,
+      0.5
+    ],
+    "delay_thresholds_db": [
+      null,
+      40,
+      30,
+      25,
+      20
+    ],
+    "channel_params": {
+      "fade_threshold_db": 10.0,
+      "se_snr_db": 20.0,
+      "delay_window_pct": 90.0,
+      "bc_threshold": 0.9
+    }
+  },
+  "ber": {
+    "enabled": true,
+    "modulations": [
+      "QPSK",
+      "16QAM"
+    ],
+    "snr_db": [
+      0,
+      2,
+      4,
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      22,
+      24,
+      26,
+      28,
+      30
+    ],
+    "nfft": null,
+    "n_ofdm": 1
+  },
+  "paths": {
+    "save_dir": "eval_results/sodupe_180_segcv/fold3"
+  }
+}
