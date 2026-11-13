@@ -22,14 +22,16 @@ Cadena de simulación (ec. 2-3 del artículo), por ventana de p símbolos OFDM c
     la estimación (frecuencia, por Parseval = energía del error en los taps).
 
 Desviaciones respecto al artículo (documentadas en PAPER_NOTES): [Re, Im] como canales en vez de concatenados
-en anchura; salida = media de los p símbolos + corrección de la CNN (aprendizaje residual) y promedio de la
-salida en la dimensión temporal; arquitectura fija = la del caso 4 en la Tabla VI del artículo (17×17/46, 3×3/23,
+en anchura; salida = símbolo central de la entrada + corrección de la CNN en esa columna (aprendizaje
+residual; como en el artículo, se estima el canal del símbolo central y los demás dan contexto); arquitectura fija = la del caso 4 en la Tabla VI del artículo (17×17/46, 3×3/23,
 17×17/2 —2 salidas por [Re, Im]—, ReLU), sin búsqueda bayesiana;
 número de épocas fijo, sin early stopping (para no usar datos reales de validación con fuentes sintéticas).
 
 Estimadores comparados (el mismo ruido de test para todos):
   ls          símbolo central truncado al GI
   avg         media de los p símbolos truncados
+  wiener      Wiener del artículo (de [23]): media fija de 10 subportadoras × p símbolos en frecuencia, sin
+              truncar al GI (con la misma ventana de p símbolos que la CNN)
   lmmse_<s>   Wiener/LMMSE con media y covarianza de taps de la fuente s (óptimo si el canal fuese gaussiano)
   cnn_<s>     CNN entrenada con canales de la fuente s
 
@@ -84,9 +86,15 @@ def qpsk(shape, rng):
     return ((2 * rng.integers(0, 2, shape) - 1) + 1j * (2 * rng.integers(0, 2, shape) - 1)) / np.sqrt(2)
 
 
-def simulate(h, p, rng, isr_db=10.0, inr_db=30.0, doppler_hz=5.0):
+def fsmooth(H, nf):
+    """Media móvil circular de nf subportadoras (última dimensión)."""
+    return sum(np.roll(H, -s, axis=-1) for s in range(-(nf // 2), nf - nf // 2)) / nf
+
+
+def simulate(h, p, rng, isr_db=10.0, inr_db=30.0, doppler_hz=5.0, wiener_nf=None):
     """h (n, L) complejo, energía unidad. Devuelve y (n, p, N_GI) estimaciones ruidosas truncadas al GI,
-    label (n, N_GI) y psi (n,) MSE en frecuencia del símbolo central sin filtrar."""
+    label (n, N_GI) y psi (n,) MSE en frecuencia del símbolo central sin filtrar. Con wiener_nf, devuelve además
+    el MSE (frecuencia) del Wiener del artículo: media de los p símbolos y de wiener_nf subportadoras."""
     n, L = h.shape
     hp = np.zeros((n, N_FFT), np.complex128)
     hp[:, :L] = h
@@ -98,7 +106,11 @@ def simulate(h, p, rng, isr_db=10.0, inr_db=30.0, doppler_hz=5.0):
     noise = np.sqrt(10 ** (-isr_db / 10)) * XF * HF / XL + N0 / XL
     y = np.fft.ifft(HL + noise, axis=2)[..., :N_GI]
     psi = np.mean(np.abs(noise[:, p // 2]) ** 2, axis=1)
-    return y.astype(np.complex64), hp[:, :N_GI].astype(np.complex64), psi
+    out = (y.astype(np.complex64), hp[:, :N_GI].astype(np.complex64), psi)
+    if wiener_nf:
+        est = fsmooth((HL + noise).mean(1), wiener_nf)
+        out += (np.mean(np.abs(est - HL[:, 0]) ** 2, axis=1),)
+    return out
 
 
 def noise_var_tap(p, isr_db=10.0, inr_db=30.0):
@@ -114,7 +126,8 @@ class SICNet(nn.Module):
                                  nn.Conv2d(c2, 2, k3, padding=k3 // 2))
 
     def forward(self, x):  # x (B, 2, N_GI, p)
-        return x.mean(-1) + self.net(x).mean(-1)  # (B, 2, N_GI)
+        c = x.shape[-1] // 2  # se estima el símbolo central; los demás son contexto
+        return x[..., c] + self.net(x)[..., c]  # (B, 2, N_GI)
 
 
 def to_tensor(y):
@@ -216,14 +229,18 @@ def main():
     # Test: mismas realizaciones de ruido para todos los estimadores
     trng = np.random.default_rng([args.seed, args.fold, 999])
     h_rep = np.repeat(h_test, args.test_windows, axis=0)
-    y, lab, psi = simulate(h_rep, args.p, trng)
+    y, lab, psi, theta_w = [], [], [], []
+    for i in range(0, len(h_rep), 500):  # por bloques (memoria)
+        for lst, v in zip((y, lab, psi, theta_w), simulate(h_rep[i:i + 500], args.p, trng, wiener_nf=10)):
+            lst.append(v)
+    y, lab, psi, theta_w = (np.concatenate(v) for v in (y, lab, psi, theta_w))
     ch_index = np.repeat(np.arange(len(h_test)), args.test_windows)
 
     def canc(est):
         theta = np.sum(np.abs(est - lab) ** 2, axis=1)
         return 10 * np.log10(psi / theta)
 
-    res = {"ls": canc(y[:, args.p // 2]), "avg": canc(y.mean(1))}
+    res = {"ls": canc(y[:, args.p // 2]), "avg": canc(y.mean(1)), "wiener": 10 * np.log10(psi / theta_w)}
     ybar = y.mean(1).astype(np.complex128)
     for s in sources:
         mu, W = lmmse(src[s], args.p)
