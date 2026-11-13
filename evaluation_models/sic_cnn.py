@@ -22,8 +22,10 @@ Cadena de simulación (ec. 2-3 del artículo), por ventana de p símbolos OFDM c
     la estimación (frecuencia, por Parseval = energía del error en los taps).
 
 Desviaciones respecto al artículo (documentadas en PAPER_NOTES): [Re, Im] como canales en vez de concatenados
-en anchura; salida = símbolo central de la entrada + corrección de la CNN en esa columna (aprendizaje
-residual; como en el artículo, se estima el canal del símbolo central y los demás dan contexto); arquitectura fija = la del caso 4 en la Tabla VI del artículo (17×17/46, 3×3/23,
+en anchura; salida = media de los p símbolos de la entrada + corrección que la CNN da en la columna del
+símbolo central (aprendizaje residual; como en el artículo, se estima el canal del símbolo central y los
+demás dan contexto; partir del símbolo central solo dejaba la red infraentrenada en 40 épocas: 18.4 dB frente
+a 18.1 dB de la media); arquitectura fija = la del caso 4 en la Tabla VI del artículo (17×17/46, 3×3/23,
 17×17/2 —2 salidas por [Re, Im]—, ReLU), sin búsqueda bayesiana;
 número de épocas fijo, sin early stopping (para no usar datos reales de validación con fuentes sintéticas).
 
@@ -127,7 +129,7 @@ class SICNet(nn.Module):
 
     def forward(self, x):  # x (B, 2, N_GI, p)
         c = x.shape[-1] // 2  # se estima el símbolo central; los demás son contexto
-        return x[..., c] + self.net(x)[..., c]  # (B, 2, N_GI)
+        return x.mean(-1) + self.net(x)[..., c]  # (B, 2, N_GI)
 
 
 def to_tensor(y):
