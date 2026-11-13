@@ -1,0 +1,263 @@
+Validación cruzada por tramos: 5 particiones, 109 tramos de test en total. Media sobre particiones; bootstrap estratificado por tramos (1000 réplicas).
+P(<Gauss): fracción de réplicas en que la fuente mejora al gaussiano (emparejada); ** > 0.975, †† < 0.025. Menor es mejor.
+
+== pdp_mae_db
+  Real train      0.5978  IC95 [0.7218, 1.2247]   P(<Gauss) 0.205
+  Real val        1.0129  IC95 [1.1106, 1.7972]   P(<Gauss) 0.000††
+  GAN             0.7569  IC95 [0.8054, 1.2472]   P(<Gauss) 0.005††
+  DCGAN           0.7797  IC95 [0.8118, 1.2549]   P(<Gauss) 0.002††
+  WGAN            0.7643  IC95 [0.7808, 1.2101]   P(<Gauss) 0.114
+  DDPM            0.9234  IC95 [0.8486, 1.3574]   P(<Gauss) 0.041
+  DDIM            0.9915  IC95 [0.8384, 1.4412]   P(<Gauss) 0.099
+  TDL-Rice        0.6399  IC95 [0.7047, 1.1808]   P(<Gauss) 0.153
+  Gaussian        0.5948  IC95 [0.6868, 1.1199]   P(<Gauss) 
+== mag_ks
+  Real train      0.0303  IC95 [0.0285, 0.0687]   P(<Gauss) 0.237
+  Real val        0.0457  IC95 [0.0407, 0.1005]   P(<Gauss) 0.037
+  GAN             0.0355  IC95 [0.0302, 0.0643]   P(<Gauss) 0.188
+  DCGAN           0.0364  IC95 [0.0309, 0.0681]   P(<Gauss) 0.047
+  WGAN            0.0328  IC95 [0.0290, 0.0642]   P(<Gauss) 0.218
+  DDPM            0.0380  IC95 [0.0316, 0.0652]   P(<Gauss) 0.237
+  DDIM            0.0459  IC95 [0.0326, 0.0756]   P(<Gauss) 0.169
+  TDL-Rice        0.0305  IC95 [0.0274, 0.0609]   P(<Gauss) 0.271
+  Gaussian        0.0303  IC95 [0.0266, 0.0601]   P(<Gauss) 
+== mean_delay_ks
+  Real train      0.1290  IC95 [0.1502, 0.2614]   P(<Gauss) 0.219
+  Real val        0.2032  IC95 [0.2076, 0.3782]   P(<Gauss) 0.008††
+  GAN             0.1410  IC95 [0.1400, 0.2466]   P(<Gauss) 0.446
+  DCGAN           0.1779  IC95 [0.1578, 0.2777]   P(<Gauss) 0.113
+  WGAN            0.2557  IC95 [0.2161, 0.3497]   P(<Gauss) 0.001††
+  DDPM            0.2673  IC95 [0.2327, 0.3562]   P(<Gauss) 0.000††
+  DDIM            0.2270  IC95 [0.2072, 0.3333]   P(<Gauss) 0.006††
+  TDL-Rice        0.1683  IC95 [0.1526, 0.2712]   P(<Gauss) 0.162
+  Gaussian        0.1305  IC95 [0.1353, 0.2413]   P(<Gauss) 
+== rms_delay_ks
+  Real train      0.1012  IC95 [0.1121, 0.2318]   P(<Gauss) 0.149
+  Real val        0.1734  IC95 [0.1642, 0.3286]   P(<Gauss) 0.006††
+  GAN             0.1591  IC95 [0.1381, 0.2518]   P(<Gauss) 0.008††
+  DCGAN           0.1563  IC95 [0.1347, 0.2517]   P(<Gauss) 0.007††
+  WGAN            0.1383  IC95 [0.1266, 0.2351]   P(<Gauss) 0.012††
+  DDPM            0.1866  IC95 [0.1711, 0.2585]   P(<Gauss) 0.019††
+  DDIM            0.1415  IC95 [0.1268, 0.2429]   P(<Gauss) 0.171
+  TDL-Rice        0.2594  IC95 [0.2124, 0.3519]   P(<Gauss) 0.000††
+  Gaussian        0.0982  IC95 [0.0988, 0.2021]   P(<Gauss) 
+== null_depth_db_ks
+  Real train      0.0967  IC95 [0.0938, 0.1822]   P(<Gauss) 0.817
+  Real val        0.2004  IC95 [0.1709, 0.3189]   P(<Gauss) 0.022††
+  GAN             0.1183  IC95 [0.1004, 0.1931]   P(<Gauss) 0.823
+  DCGAN           0.1567  IC95 [0.1368, 0.2321]   P(<Gauss) 0.001††
+  WGAN            0.0988  IC95 [0.0961, 0.1772]   P(<Gauss) 0.892
+  DDPM            0.1077  IC95 [0.1026, 0.1785]   P(<Gauss) 0.737
+  DDIM            0.1032  IC95 [0.0983, 0.1792]   P(<Gauss) 0.824
+  TDL-Rice        0.1984  IC95 [0.1556, 0.2731]   P(<Gauss) 0.000††
+  Gaussian        0.1406  IC95 [0.1079, 0.2141]   P(<Gauss) 
+== zf_gain_db_ks
+  Real train      0.0959  IC95 [0.1057, 0.1904]   P(<Gauss) 0.817
+  Real val        0.2414  IC95 [0.1953, 0.3629]   P(<Gauss) 0.010††
+  GAN             0.1194  IC95 [0.1118, 0.2021]   P(<Gauss) 0.799
+  DCGAN           0.1735  IC95 [0.1619, 0.2548]   P(<Gauss) 0.000††
+  WGAN            0.1069  IC95 [0.1086, 0.1913]   P(<Gauss) 0.839
+  DDPM            0.1181  IC95 [0.1162, 0.1989]   P(<Gauss) 0.682
+  DDIM            0.1067  IC95 [0.1059, 0.1893]   P(<Gauss) 0.809
+  TDL-Rice        0.2036  IC95 [0.1625, 0.2762]   P(<Gauss) 0.001††
+  Gaussian        0.1422  IC95 [0.1187, 0.2209]   P(<Gauss) 
+== ripple_db_ks
+  Real train      0.0869  IC95 [0.0890, 0.1776]   P(<Gauss) 0.828
+  Real val        0.1997  IC95 [0.1698, 0.3100]   P(<Gauss) 0.022††
+  GAN             0.1094  IC95 [0.0949, 0.1859]   P(<Gauss) 0.875
+  DCGAN           0.1433  IC95 [0.1264, 0.2206]   P(<Gauss) 0.031
+  WGAN            0.0949  IC95 [0.0938, 0.1748]   P(<Gauss) 0.877
+  DDPM            0.1031  IC95 [0.0945, 0.1760]   P(<Gauss) 0.781
+  DDIM            0.0968  IC95 [0.0929, 0.1749]   P(<Gauss) 0.836
+  TDL-Rice        0.1809  IC95 [0.1362, 0.2499]   P(<Gauss) 0.000††
+  Gaussian        0.1371  IC95 [0.1064, 0.2093]   P(<Gauss) 
+== fade_frac_ks
+  Real train      0.1187  IC95 [0.1144, 0.2121]   P(<Gauss) 0.643
+  Real val        0.1875  IC95 [0.1572, 0.3224]   P(<Gauss) 0.057
+  GAN             0.1257  IC95 [0.1190, 0.2124]   P(<Gauss) 0.646
+  DCGAN           0.1723  IC95 [0.1675, 0.2548]   P(<Gauss) 0.000††
+  WGAN            0.1135  IC95 [0.1047, 0.1965]   P(<Gauss) 0.854
+  DDPM            0.1229  IC95 [0.1087, 0.2042]   P(<Gauss) 0.679
+  DDIM            0.1291  IC95 [0.1128, 0.2110]   P(<Gauss) 0.641
+  TDL-Rice        0.1964  IC95 [0.1584, 0.2676]   P(<Gauss) 0.000††
+  Gaussian        0.1383  IC95 [0.1198, 0.2206]   P(<Gauss) 
+== se_ks
+  Real train      0.1112  IC95 [0.1321, 0.2321]   P(<Gauss) 0.599
+  Real val        0.2265  IC95 [0.2029, 0.3818]   P(<Gauss) 0.007††
+  GAN             0.1186  IC95 [0.1271, 0.2267]   P(<Gauss) 0.723
+  DCGAN           0.1898  IC95 [0.1812, 0.2864]   P(<Gauss) 0.006††
+  WGAN            0.1063  IC95 [0.1193, 0.2165]   P(<Gauss) 0.774
+  DDPM            0.1427  IC95 [0.1435, 0.2345]   P(<Gauss) 0.504
+  DDIM            0.1340  IC95 [0.1329, 0.2308]   P(<Gauss) 0.611
+  TDL-Rice        0.2029  IC95 [0.1699, 0.2885]   P(<Gauss) 0.007††
+  Gaussian        0.1444  IC95 [0.1307, 0.2382]   P(<Gauss) 
+== bc_inst_mhz_ks
+  Real train      0.1253  IC95 [0.1442, 0.2555]   P(<Gauss) 0.543
+  Real val        0.1819  IC95 [0.1955, 0.3556]   P(<Gauss) 0.052
+  GAN             0.1290  IC95 [0.1395, 0.2461]   P(<Gauss) 0.674
+  DCGAN           0.1610  IC95 [0.1662, 0.2754]   P(<Gauss) 0.250
+  WGAN            0.1938  IC95 [0.1645, 0.2816]   P(<Gauss) 0.261
+  DDPM            0.2649  IC95 [0.2141, 0.3473]   P(<Gauss) 0.032
+  DDIM            0.1956  IC95 [0.1736, 0.2922]   P(<Gauss) 0.209
+  TDL-Rice        0.1728  IC95 [0.1527, 0.2710]   P(<Gauss) 0.143
+  Gaussian        0.1505  IC95 [0.1452, 0.2568]   P(<Gauss) 
+== delay_window_ns_ks
+  Real train      0.1097  IC95 [0.1143, 0.2250]   P(<Gauss) 0.521
+  Real val        0.1444  IC95 [0.1529, 0.3359]   P(<Gauss) 0.082
+  GAN             0.1174  IC95 [0.1036, 0.2130]   P(<Gauss) 0.649
+  DCGAN           0.1532  IC95 [0.1258, 0.2543]   P(<Gauss) 0.246
+  WGAN            0.1369  IC95 [0.1219, 0.2342]   P(<Gauss) 0.385
+  DDPM            0.2183  IC95 [0.1756, 0.3113]   P(<Gauss) 0.030
+  DDIM            0.1479  IC95 [0.1278, 0.2575]   P(<Gauss) 0.262
+  TDL-Rice        0.1409  IC95 [0.1212, 0.2406]   P(<Gauss) 0.149
+  Gaussian        0.1283  IC95 [0.1137, 0.2252]   P(<Gauss) 
+== n_taps_energy_ks
+  Real train      0.0951  IC95 [0.0922, 0.2020]   P(<Gauss) 0.298
+  Real val        0.1873  IC95 [0.1706, 0.3403]   P(<Gauss) 0.000††
+  GAN             0.0834  IC95 [0.0755, 0.1717]   P(<Gauss) 0.674
+  DCGAN           0.0984  IC95 [0.0896, 0.1875]   P(<Gauss) 0.401
+  WGAN            0.1543  IC95 [0.1146, 0.2303]   P(<Gauss) 0.046
+  DDPM            0.1727  IC95 [0.1466, 0.2609]   P(<Gauss) 0.003††
+  DDIM            0.1579  IC95 [0.1238, 0.2453]   P(<Gauss) 0.019††
+  TDL-Rice        0.0939  IC95 [0.0875, 0.1888]   P(<Gauss) 0.286
+  Gaussian        0.0905  IC95 [0.0827, 0.1828]   P(<Gauss) 
+== delay_interval_th40dB_ks
+  Real train      0.1024  IC95 [0.1165, 0.1999]   P(<Gauss) 0.626
+  Real val        0.1337  IC95 [0.1485, 0.2650]   P(<Gauss) 0.104
+  GAN             0.1457  IC95 [0.1368, 0.2157]   P(<Gauss) 0.161
+  DCGAN           0.1570  IC95 [0.1462, 0.2240]   P(<Gauss) 0.081
+  WGAN            0.1988  IC95 [0.1765, 0.2679]   P(<Gauss) 0.000††
+  DDPM            0.3507  IC95 [0.3119, 0.4081]   P(<Gauss) 0.000††
+  DDIM            0.2969  IC95 [0.2634, 0.3575]   P(<Gauss) 0.000††
+  TDL-Rice        0.1373  IC95 [0.1288, 0.2158]   P(<Gauss) 0.420
+  Gaussian        0.1342  IC95 [0.1248, 0.2038]   P(<Gauss) 
+== delay_interval_th30dB_ks
+  Real train      0.1425  IC95 [0.1328, 0.2524]   P(<Gauss) 0.267
+  Real val        0.1921  IC95 [0.1754, 0.3433]   P(<Gauss) 0.014††
+  GAN             0.1720  IC95 [0.1461, 0.2598]   P(<Gauss) 0.109
+  DCGAN           0.1803  IC95 [0.1665, 0.2760]   P(<Gauss) 0.015††
+  WGAN            0.1560  IC95 [0.1411, 0.2536]   P(<Gauss) 0.217
+  DDPM            0.1574  IC95 [0.1421, 0.2503]   P(<Gauss) 0.212
+  DDIM            0.1576  IC95 [0.1484, 0.2565]   P(<Gauss) 0.116
+  TDL-Rice        0.4734  IC95 [0.4120, 0.5526]   P(<Gauss) 0.000††
+  Gaussian        0.1322  IC95 [0.1269, 0.2339]   P(<Gauss) 
+== delay_interval_th25dB_ks
+  Real train      0.1142  IC95 [0.1248, 0.2282]   P(<Gauss) 0.683
+  Real val        0.1778  IC95 [0.1814, 0.3385]   P(<Gauss) 0.059
+  GAN             0.1348  IC95 [0.1272, 0.2349]   P(<Gauss) 0.746
+  DCGAN           0.1519  IC95 [0.1333, 0.2475]   P(<Gauss) 0.512
+  WGAN            0.1652  IC95 [0.1393, 0.2620]   P(<Gauss) 0.412
+  DDPM            0.1880  IC95 [0.1521, 0.2807]   P(<Gauss) 0.254
+  DDIM            0.1734  IC95 [0.1416, 0.2592]   P(<Gauss) 0.374
+  TDL-Rice        0.1941  IC95 [0.1537, 0.2913]   P(<Gauss) 0.103
+  Gaussian        0.1430  IC95 [0.1366, 0.2507]   P(<Gauss) 
+== delay_interval_th20dB_ks
+  Real train      0.0901  IC95 [0.1058, 0.2277]   P(<Gauss) 0.610
+  Real val        0.1586  IC95 [0.1741, 0.3613]   P(<Gauss) 0.024††
+  GAN             0.0866  IC95 [0.1046, 0.2054]   P(<Gauss) 0.820
+  DCGAN           0.1420  IC95 [0.1337, 0.2607]   P(<Gauss) 0.132
+  WGAN            0.1570  IC95 [0.1413, 0.2702]   P(<Gauss) 0.143
+  DDPM            0.1742  IC95 [0.1520, 0.2786]   P(<Gauss) 0.057
+  DDIM            0.1381  IC95 [0.1244, 0.2516]   P(<Gauss) 0.209
+  TDL-Rice        0.1274  IC95 [0.1145, 0.2363]   P(<Gauss) 0.301
+  Gaussian        0.1194  IC95 [0.1139, 0.2294]   P(<Gauss) 
+== mean_delay_th40dB_ks
+  Real train      0.1297  IC95 [0.1529, 0.2683]   P(<Gauss) 0.237
+  Real val        0.1913  IC95 [0.2092, 0.3761]   P(<Gauss) 0.011††
+  GAN             0.1332  IC95 [0.1379, 0.2485]   P(<Gauss) 0.513
+  DCGAN           0.1808  IC95 [0.1583, 0.2830]   P(<Gauss) 0.138
+  WGAN            0.2632  IC95 [0.2228, 0.3613]   P(<Gauss) 0.001††
+  DDPM            0.2654  IC95 [0.2278, 0.3571]   P(<Gauss) 0.002††
+  DDIM            0.2268  IC95 [0.2078, 0.3380]   P(<Gauss) 0.007††
+  TDL-Rice        0.1752  IC95 [0.1583, 0.2850]   P(<Gauss) 0.124
+  Gaussian        0.1325  IC95 [0.1349, 0.2488]   P(<Gauss) 
+== rms_delay_th40dB_ks
+  Real train      0.0918  IC95 [0.1071, 0.2137]   P(<Gauss) 0.201
+  Real val        0.1819  IC95 [0.1661, 0.3222]   P(<Gauss) 0.002††
+  GAN             0.1280  IC95 [0.1174, 0.2224]   P(<Gauss) 0.046
+  DCGAN           0.1322  IC95 [0.1230, 0.2275]   P(<Gauss) 0.028
+  WGAN            0.1028  IC95 [0.1113, 0.2101]   P(<Gauss) 0.194
+  DDPM            0.2718  IC95 [0.2492, 0.3383]   P(<Gauss) 0.000††
+  DDIM            0.2204  IC95 [0.1924, 0.2932]   P(<Gauss) 0.006††
+  TDL-Rice        0.1858  IC95 [0.1559, 0.2790]   P(<Gauss) 0.012††
+  Gaussian        0.0853  IC95 [0.1003, 0.1933]   P(<Gauss) 
+== mean_delay_th30dB_ks
+  Real train      0.1522  IC95 [0.1637, 0.2932]   P(<Gauss) 0.525
+  Real val        0.2131  IC95 [0.2247, 0.4034]   P(<Gauss) 0.034
+  GAN             0.1414  IC95 [0.1449, 0.2631]   P(<Gauss) 0.843
+  DCGAN           0.1908  IC95 [0.1706, 0.2983]   P(<Gauss) 0.298
+  WGAN            0.2774  IC95 [0.2313, 0.3730]   P(<Gauss) 0.026
+  DDPM            0.2419  IC95 [0.2210, 0.3518]   P(<Gauss) 0.041
+  DDIM            0.2430  IC95 [0.2131, 0.3524]   P(<Gauss) 0.049
+  TDL-Rice        0.2124  IC95 [0.1887, 0.3251]   P(<Gauss) 0.068
+  Gaussian        0.1662  IC95 [0.1626, 0.2874]   P(<Gauss) 
+== rms_delay_th30dB_ks
+  Real train      0.1174  IC95 [0.1381, 0.2489]   P(<Gauss) 0.707
+  Real val        0.1687  IC95 [0.1812, 0.3380]   P(<Gauss) 0.096
+  GAN             0.1301  IC95 [0.1349, 0.2355]   P(<Gauss) 0.826
+  DCGAN           0.1730  IC95 [0.1628, 0.2766]   P(<Gauss) 0.312
+  WGAN            0.1796  IC95 [0.1559, 0.2694]   P(<Gauss) 0.385
+  DDPM            0.2433  IC95 [0.2033, 0.3272]   P(<Gauss) 0.083
+  DDIM            0.1663  IC95 [0.1575, 0.2698]   P(<Gauss) 0.396
+  TDL-Rice        0.2339  IC95 [0.1942, 0.3230]   P(<Gauss) 0.013††
+  Gaussian        0.1620  IC95 [0.1496, 0.2594]   P(<Gauss) 
+== mean_delay_th25dB_ks
+  Real train      0.1559  IC95 [0.1651, 0.2950]   P(<Gauss) 0.586
+  Real val        0.2356  IC95 [0.2399, 0.4193]   P(<Gauss) 0.023††
+  GAN             0.1408  IC95 [0.1464, 0.2627]   P(<Gauss) 0.883
+  DCGAN           0.1934  IC95 [0.1701, 0.3012]   P(<Gauss) 0.353
+  WGAN            0.2823  IC95 [0.2336, 0.3777]   P(<Gauss) 0.032
+  DDPM            0.2457  IC95 [0.2223, 0.3563]   P(<Gauss) 0.050
+  DDIM            0.2410  IC95 [0.2135, 0.3558]   P(<Gauss) 0.060
+  TDL-Rice        0.2096  IC95 [0.1914, 0.3252]   P(<Gauss) 0.046
+  Gaussian        0.1715  IC95 [0.1665, 0.2949]   P(<Gauss) 
+== rms_delay_th25dB_ks
+  Real train      0.1223  IC95 [0.1448, 0.2637]   P(<Gauss) 0.789
+  Real val        0.1838  IC95 [0.1966, 0.3725]   P(<Gauss) 0.103
+  GAN             0.1229  IC95 [0.1420, 0.2474]   P(<Gauss) 0.843
+  DCGAN           0.1701  IC95 [0.1668, 0.2833]   P(<Gauss) 0.458
+  WGAN            0.1915  IC95 [0.1649, 0.2868]   P(<Gauss) 0.431
+  DDPM            0.2614  IC95 [0.2149, 0.3481]   P(<Gauss) 0.096
+  DDIM            0.1851  IC95 [0.1676, 0.2958]   P(<Gauss) 0.406
+  TDL-Rice        0.1842  IC95 [0.1614, 0.2873]   P(<Gauss) 0.343
+  Gaussian        0.1697  IC95 [0.1604, 0.2807]   P(<Gauss) 
+== mean_delay_th20dB_ks
+  Real train      0.1535  IC95 [0.1655, 0.2962]   P(<Gauss) 0.557
+  Real val        0.2353  IC95 [0.2354, 0.4242]   P(<Gauss) 0.021††
+  GAN             0.1403  IC95 [0.1422, 0.2601]   P(<Gauss) 0.896
+  DCGAN           0.1900  IC95 [0.1702, 0.3036]   P(<Gauss) 0.318
+  WGAN            0.2824  IC95 [0.2298, 0.3765]   P(<Gauss) 0.029
+  DDPM            0.2492  IC95 [0.2172, 0.3488]   P(<Gauss) 0.037
+  DDIM            0.2409  IC95 [0.2114, 0.3509]   P(<Gauss) 0.048
+  TDL-Rice        0.1999  IC95 [0.1885, 0.3208]   P(<Gauss) 0.052
+  Gaussian        0.1702  IC95 [0.1677, 0.2927]   P(<Gauss) 
+== rms_delay_th20dB_ks
+  Real train      0.1247  IC95 [0.1409, 0.2673]   P(<Gauss) 0.748
+  Real val        0.2020  IC95 [0.2179, 0.3942]   P(<Gauss) 0.034
+  GAN             0.1266  IC95 [0.1366, 0.2509]   P(<Gauss) 0.815
+  DCGAN           0.1713  IC95 [0.1648, 0.2874]   P(<Gauss) 0.401
+  WGAN            0.1941  IC95 [0.1665, 0.2935]   P(<Gauss) 0.340
+  DDPM            0.2553  IC95 [0.2147, 0.3454]   P(<Gauss) 0.050
+  DDIM            0.1929  IC95 [0.1718, 0.3008]   P(<Gauss) 0.263
+  TDL-Rice        0.1559  IC95 [0.1553, 0.2777]   P(<Gauss) 0.492
+  Gaussian        0.1501  IC95 [0.1576, 0.2804]   P(<Gauss) 
+== ber_QPSK_dlog10
+  Real train      0.0726  IC95 [0.0546, 0.1294]   P(<Gauss) 0.694
+  Real val        0.1190  IC95 [0.0972, 0.2167]   P(<Gauss) 0.048
+  GAN             0.0803  IC95 [0.0677, 0.1377]   P(<Gauss) 0.627
+  DCGAN           0.1055  IC95 [0.0902, 0.1608]   P(<Gauss) 0.000††
+  WGAN            0.0747  IC95 [0.0604, 0.1266]   P(<Gauss) 0.733
+  DDPM            0.0863  IC95 [0.0635, 0.1336]   P(<Gauss) 0.614
+  DDIM            0.0819  IC95 [0.0655, 0.1350]   P(<Gauss) 0.616
+  TDL-Rice        0.1073  IC95 [0.0816, 0.1615]   P(<Gauss) 0.008††
+  Gaussian        0.0889  IC95 [0.0674, 0.1434]   P(<Gauss) 
+== ber_16QAM_dlog10
+  Real train      0.0401  IC95 [0.0294, 0.0774]   P(<Gauss) 0.734
+  Real val        0.0673  IC95 [0.0508, 0.1241]   P(<Gauss) 0.082
+  GAN             0.0453  IC95 [0.0389, 0.0818]   P(<Gauss) 0.641
+  DCGAN           0.0640  IC95 [0.0552, 0.0987]   P(<Gauss) 0.000††
+  WGAN            0.0412  IC95 [0.0317, 0.0737]   P(<Gauss) 0.805
+  DDPM            0.0514  IC95 [0.0345, 0.0815]   P(<Gauss) 0.603
+  DDIM            0.0491  IC95 [0.0369, 0.0808]   P(<Gauss) 0.601
+  TDL-Rice        0.0711  IC95 [0.0519, 0.1049]   P(<Gauss) 0.003††
+  Gaussian        0.0507  IC95 [0.0385, 0.0857]   P(<Gauss) 

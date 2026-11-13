@@ -885,6 +885,51 @@ Lectura:
 
 ---
 
+### 6.11 Validación cruzada por tramos (prueba piloto, `eval_results/sodupe_180_segcv/`)
+
+Diseño: `make_segment_folds.py` reparte los 109 tramos (§2.3) en 5 particiones equilibradas (test ≈ 2840
+canales / 21–22 tramos; val ≈ 1400–1570 canales / 8–14 tramos enteros; train el resto, ≈ 9800–9930). Ningún
+tramo se reparte entre conjuntos. En cada partición se entrenan los 5 modelos (**una sola semilla, 42**), se
+ajustan TDL-Rice y gaussiano con su train y se evalúa frente a su test (`evaluation.py`). `cv_stats.py`
+promedia las métricas de seed_stats sobre las 5 particiones y hace un bootstrap estratificado por tramos
+(1000 réplicas; test, train y val remuestreados por tramos dentro de cada partición; generados canal a
+canal). Ficheros: `folds.txt`, `cv_folds.txt/.csv` (por partición), `cv_bootstrap.txt/.csv`.
+
+Media sobre particiones / P(< Gaussian) (** > 0.975, †† < 0.025):
+
+| Métrica | Real train | GAN | DCGAN | WGAN | DDPM | DDIM | TDL-Rice | Gaussian |
+|---|---|---|---|---|---|---|---|---|
+| KS profundidad del nulo | 0.097 / 0.82 | 0.118 / 0.82 | 0.157 / 0.00†† | 0.099 / 0.89 | 0.108 / 0.74 | 0.103 / 0.82 | 0.198 / 0.00†† | 0.141 |
+| KS rizado | 0.087 / 0.83 | 0.109 / 0.88 | 0.143 / 0.03 | 0.095 / 0.88 | 0.103 / 0.78 | 0.097 / 0.84 | 0.181 / 0.00†† | 0.137 |
+| KS ganancia ZF | 0.096 / 0.82 | 0.119 / 0.80 | 0.173 / 0.00†† | 0.107 / 0.84 | 0.118 / 0.68 | 0.107 / 0.81 | 0.204 / 0.00†† | 0.142 |
+| KS fracción en fade | 0.119 / 0.64 | 0.126 / 0.65 | 0.172 / 0.00†† | 0.113 / 0.85 | 0.123 / 0.68 | 0.129 / 0.64 | 0.196 / 0.00†† | 0.138 |
+| PDP MAE (dB) | 0.598 / 0.20 | 0.757 / 0.01†† | 0.780 / 0.00†† | 0.764 / 0.11 | 0.923 / 0.04 | 0.992 / 0.10 | 0.640 / 0.15 | 0.595 |
+| KS RMS delay, sin umbral | 0.101 / 0.15 | 0.159 / 0.01†† | 0.156 / 0.01†† | 0.138 / 0.01†† | 0.187 / 0.02†† | 0.142 / 0.17 | 0.259 / 0.00†† | 0.098 |
+| KS retardo medio | 0.129 / 0.22 | 0.141 / 0.45 | 0.178 / 0.11 | 0.256 / 0.00†† | 0.267 / 0.00†† | 0.227 / 0.01†† | 0.168 / 0.16 | 0.131 |
+| KS intervalo de retardo 40 dB | 0.102 / 0.63 | 0.146 / 0.16 | 0.157 / 0.08 | 0.199 / 0.00†† | 0.351 / 0.00†† | 0.297 / 0.00†† | 0.137 / 0.42 | 0.134 |
+| KS \|h\| | 0.030 / 0.24 | 0.036 / 0.19 | 0.036 / 0.05 | 0.033 / 0.22 | 0.038 / 0.24 | 0.046 / 0.17 | 0.031 / 0.27 | 0.030 |
+| BER QPSK \|Δlog10\| | 0.073 / 0.69 | 0.080 / 0.63 | 0.106 / 0.00†† | 0.075 / 0.73 | 0.086 / 0.61 | 0.082 / 0.62 | 0.107 / 0.01†† | 0.089 |
+| BER 16-QAM \|Δlog10\| | 0.040 / 0.73 | 0.045 / 0.64 | 0.064 / 0.00†† | 0.041 / 0.81 | 0.051 / 0.60 | 0.049 / 0.60 | 0.071 / 0.00†† | 0.051 |
+
+Lectura:
+- **Ningún modelo generativo es significativamente mejor que el gaussiano en ninguna métrica.** En nulo,
+  rizado, ZF, fade y BER, WGAN, DDIM, GAN y DDPM son mejores en media (WGAN ≈ real train) pero con P =
+  0.64–0.89. Por partición, WGAN mejora al gaussiano en nulo y rizado en 4 de 5 particiones (no en la 1).
+- **Techo de la evaluación**: tampoco real train (datos reales independientes) es significativamente mejor
+  que el gaussiano (P = 0.82 en nulo y ZF, 0.20 en PDP). Con la heterogeneidad entre tramos (eta² 0.5–0.8),
+  estas métricas no separan "datos reales" de "gaussiano de covarianza completa"; ningún modelo puede
+  superar ese techo. Más semillas no lo cambian.
+- **PDP**: el gaussiano (0.595 dB) iguala a real train (0.598), como se esperaba (reproduce la covarianza
+  de train por construcción); GAN y DCGAN son significativamente peores. La ventaja de DDIM/WGAN en PDP de
+  §6.10 no se mantiene: era propia del test único.
+- **Estructura de retardos**: los generativos son **significativamente peores** que el gaussiano en RMS
+  delay sin umbral (GAN, DCGAN, WGAN, DDPM), retardo medio e intervalo de retardo a 40 dB (WGAN, DDPM,
+  DDIM).
+- DCGAN falla en la partición 4 (KS del nulo 0.37, ZF 0.49): posible colapso; con una semilla no se puede
+  saber si es la partición o el entrenamiento.
+- Conclusión frente a §6.10: la significación de nulo y rizado con el test único **no se confirma** con
+  validación cruzada. Las cifras del artículo deben ser las de esta sección (o de su ampliación).
+
 ## 7. Figuras (PDF y PNG) en `eval_results/sodupe_180_split_g200/`
 
 | Figura | Contenido |
@@ -984,6 +1029,10 @@ python evaluation_models/seed_stats.py --cache <carpeta>   # tabla entre semilla
 python evaluation_models/recordings.py                     # tramos continuos, coherencia por tramo, variación entre tramos
 for b in 25 100 500 segment; do python evaluation_models/seed_stats.py --block $b --cache <carpeta>; done
 python evaluation_models/bootstrap_sensitivity.py           # comparación de IC95 y P entre bloques
+python evaluation_models/make_segment_folds.py              # 5 particiones por tramos
+# por partición k: train.py --model <m> --config checkpoints/sodupe_180_segcv/fold<k>/<gans|dm>_config.json,
+# generate_from_config.py y evaluation.py --config eval_results/sodupe_180_segcv/fold<k>/evaluation_config.json --reuse-generated
+python evaluation_models/cv_stats.py --cache <carpeta>      # media sobre particiones + bootstrap por tramos
 python evaluation_models/model_costs.py               # lee training_log.json de paths.save_dir
 python evaluation_models/sweep_sampling.py --steps 25 50 100 250 500 1000 --eta 0 0.5 1   # muestreo DDIM
 ```
