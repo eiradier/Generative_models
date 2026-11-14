@@ -1,0 +1,76 @@
+== Partición 0: test 2846 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim']
+  ls 9.04 dB, avg 18.07 dB, wiener 17.58 dB, lmmse_real 21.21 dB, lmmse_gauss 21.30 dB, lmmse_wgan 21.23 dB, lmmse_ddim 21.18 dB
+  CNN con real (3000 canales)
+    época 1/40  MSE 9.204e-04
+    época 11/40  MSE 3.633e-04
+    época 21/40  MSE 3.401e-04
+    época 31/40  MSE 3.285e-04
+    época 40/40  MSE 3.273e-04
+    92.1 min
+  cnn_real: 21.33 dB
+  CNN con gauss (3000 canales)
+    época 1/40  MSE 7.960e-04
+    época 11/40  MSE 3.556e-04
+== Partición 0: test 2846 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim']
+  ls 9.04 dB, avg 18.07 dB, wiener 17.58 dB, lmmse_real 21.21 dB, lmmse_gauss 21.30 dB, lmmse_wgan 21.23 dB, lmmse_ddim 21.18 dB
+  cnn_real: 21.33 dB
+  CNN con gauss (3000 canales)
+    época 1/40  MSE 8.209e-04
+    época 11/40  MSE 3.823e-04
+    época 21/40  MSE 3.638e-04
+    época 31/40  MSE 3.570e-04
+    época 40/40  MSE 3.545e-04
+    82.4 min
+  cnn_gauss: 21.22 dB
+  CNN con wgan (3000 canales)
+    época 1/40  MSE 8.291e-04
+    época 11/40  MSE 3.534e-04
+== Partición 0: test 2846 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim']
+  ls 9.04 dB, avg 18.07 dB, wiener 17.58 dB, lmmse_real 21.21 dB, lmmse_gauss 21.30 dB, lmmse_wgan 21.23 dB, lmmse_ddim 21.18 dB
+  cnn_real: 21.33 dB
+  cnn_gauss: 21.22 dB
+  CNN con wgan (3000 canales)
+    época 1/40  MSE 7.978e-04
+    época 11/40  MSE 3.458e-04
+    época 21/40  MSE 3.371e-04
+    época 31/40  MSE 3.339e-04
+    época 40/40  MSE 3.330e-04
+    80.2 min
+  cnn_wgan: 21.34 dB
+  CNN con ddim (3000 canales)
+    época 1/40  MSE 9.858e-04
+    época 11/40  MSE 3.928e-04
+== Partición 0: test 2846 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim']
+  ls 9.04 dB, avg 18.07 dB, wiener 17.58 dB, lmmse_real 21.21 dB, lmmse_gauss 21.30 dB, lmmse_wgan 21.23 dB, lmmse_ddim 21.18 dB
+  cnn_real: 21.33 dB
+  cnn_gauss: 21.22 dB
+  cnn_wgan: 21.34 dB
+  CNN con ddim (3000 canales)
+    época 1/40  MSE 8.345e-04
+    época 11/40  MSE 3.680e-04
+    época 21/40  MSE 3.514e-04
+== Partición 0: test 2846 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim']
+  ls 9.04 dB, avg 18.07 dB, wiener 17.58 dB, lmmse_real 21.21 dB, lmmse_gauss 21.30 dB, lmmse_wgan 21.23 dB, lmmse_ddim 21.18 dB
+  cnn_real: 21.33 dB
+  cnn_gauss: 21.22 dB
+  cnn_wgan: 21.34 dB
+  CNN con ddim (3000 canales)
+    época 1/40  MSE 8.345e-04
+    época 11/40  MSE 3.680e-04
+    época 21/40  MSE 3.514e-04
+    época 31/40  MSE 3.533e-04
+    época 40/40  MSE 3.545e-04
+    55.5 min
+  cnn_ddim: 21.29 dB
+Partición 0: cancelación media (dB) frente a canales reales de test (2846 canales × 2 ventanas; p = 8)
+  ls                  9.04  (mediana 9.03)
+  avg                18.07  (mediana 18.07)
+  wiener             17.58  (mediana 17.95)
+  lmmse_real         21.21  (mediana 21.77)
+  lmmse_gauss        21.30  (mediana 21.85)
+  lmmse_wgan         21.23  (mediana 21.77)
+  lmmse_ddim         21.18  (mediana 21.60)
+  cnn_real           21.33  (mediana 21.39)
+  cnn_gauss          21.22  (mediana 21.24)
+  cnn_wgan           21.34  (mediana 21.36)
+  cnn_ddim           21.29  (mediana 21.30)
