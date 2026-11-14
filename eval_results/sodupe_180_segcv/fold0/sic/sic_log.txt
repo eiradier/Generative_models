@@ -92,3 +92,4 @@ Partición 0: cancelación media (dB) frente a canales reales de test (2846 cana
     época 1/40  MSE 8.275e-04
     época 11/40  MSE 3.514e-04
     época 21/40  MSE 3.319e-04
+== Partición 0: test 2846 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
