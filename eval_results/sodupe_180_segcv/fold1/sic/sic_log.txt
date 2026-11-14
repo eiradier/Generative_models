@@ -13,3 +13,4 @@
     época 11/40  MSE 3.646e-04
     época 21/40  MSE 3.474e-04
     época 31/40  MSE 3.455e-04
+== Partición 1: test 2841 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
