@@ -93,3 +93,20 @@ Partición 0: cancelación media (dB) frente a canales reales de test (2846 cana
     época 11/40  MSE 3.514e-04
     época 21/40  MSE 3.319e-04
 == Partición 0: test 2846 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
+  ls 9.04 dB, avg 18.07 dB, wiener 17.58 dB, lmmse_real 21.21 dB, lmmse_gauss 21.30 dB, lmmse_wgan 21.23 dB, lmmse_ddim 21.18 dB, lmmse_gan 19.83 dB, lmmse_dcgan 20.38 dB, lmmse_ddpm 20.61 dB, lmmse_tdl 20.59 dB, lmmse_real_all 21.29 dB
+  cnn_real: 21.33 dB
+  cnn_gauss: 21.22 dB
+  cnn_wgan: 21.34 dB
+  cnn_ddim: 21.29 dB
+  cnn_gan: 21.05 dB
+  CNN con dcgan (3000 canales)
+    época 1/40  MSE 8.459e-04
+    época 11/40  MSE 3.408e-04
+    época 21/40  MSE 3.272e-04
+    época 31/40  MSE 3.241e-04
+    época 40/40  MSE 3.190e-04
+    83.4 min
+  cnn_dcgan: 21.35 dB
+  CNN con ddpm (3000 canales)
+    época 1/40  MSE 8.208e-04
+    época 11/40  MSE 3.166e-04
