@@ -110,3 +110,4 @@ Partición 0: cancelación media (dB) frente a canales reales de test (2846 cana
   CNN con ddpm (3000 canales)
     época 1/40  MSE 8.208e-04
     época 11/40  MSE 3.166e-04
+== Partición 0: test 2846 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
