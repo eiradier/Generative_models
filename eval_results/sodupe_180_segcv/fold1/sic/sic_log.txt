@@ -117,3 +117,4 @@
   CNN con tdl (3000 canales)
     época 1/40  MSE 8.661e-04
     época 11/40  MSE 4.346e-04
+== Partición 1: test 2841 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
