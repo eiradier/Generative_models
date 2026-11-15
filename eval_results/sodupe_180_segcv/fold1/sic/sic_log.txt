@@ -62,3 +62,20 @@
     época 11/40  MSE 3.394e-04
     época 21/40  MSE 3.233e-04
 == Partición 1: test 2841 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
+  ls 9.05 dB, avg 18.07 dB, wiener 17.38 dB, lmmse_real 21.32 dB, lmmse_gauss 21.38 dB, lmmse_wgan 21.34 dB, lmmse_ddim 21.13 dB, lmmse_gan 20.67 dB, lmmse_dcgan 20.47 dB, lmmse_ddpm 20.51 dB, lmmse_tdl 20.42 dB, lmmse_real_all 21.38 dB
+  cnn_real: 21.38 dB
+  cnn_gauss: 21.15 dB
+  cnn_wgan: 21.30 dB
+  cnn_ddim: 21.25 dB
+  CNN con gan (3000 canales)
+    época 1/40  MSE 9.899e-04
+    época 11/40  MSE 3.710e-04
+    época 21/40  MSE 3.405e-04
+    época 31/40  MSE 3.349e-04
+    época 40/40  MSE 3.307e-04
+    71.9 min
+  cnn_gan: 21.31 dB
+  CNN con dcgan (3000 canales)
+    época 1/40  MSE 8.014e-04
+    época 11/40  MSE 3.400e-04
+    época 21/40  MSE 3.251e-04
