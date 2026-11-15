@@ -137,3 +137,4 @@
   CNN con real_all (9790 canales)
     época 1/40  MSE 9.915e-04
     época 11/40  MSE 3.619e-04
+== Partición 1: test 2841 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
