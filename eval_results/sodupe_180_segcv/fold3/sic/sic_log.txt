@@ -3,3 +3,4 @@
   CNN con real (3000 canales)
     época 1/40  MSE 9.149e-04
     época 11/40  MSE 3.674e-04
+== Partición 3: test 2830 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
