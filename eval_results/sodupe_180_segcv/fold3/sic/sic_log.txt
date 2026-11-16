@@ -1,0 +1,5 @@
+== Partición 3: test 2830 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
+  ls 9.04 dB, avg 18.07 dB, wiener 17.57 dB, lmmse_real 21.29 dB, lmmse_gauss 21.35 dB, lmmse_wgan 21.43 dB, lmmse_ddim 21.22 dB, lmmse_gan 20.94 dB, lmmse_dcgan 20.92 dB, lmmse_ddpm 20.80 dB, lmmse_tdl 20.68 dB, lmmse_real_all 21.36 dB
+  CNN con real (3000 canales)
+    época 1/40  MSE 9.149e-04
+    época 11/40  MSE 3.674e-04
