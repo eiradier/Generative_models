@@ -16,3 +16,4 @@
   CNN con gauss (3000 canales)
     época 1/40  MSE 8.166e-04
     época 11/40  MSE 3.589e-04
+== Partición 3: test 2830 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
