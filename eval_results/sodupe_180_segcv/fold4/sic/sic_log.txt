@@ -79,3 +79,4 @@
   cnn_dcgan: 20.80 dB
   CNN con ddpm (3000 canales)
     época 1/40  MSE 8.677e-04
+== Partición 4: test 2840 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
