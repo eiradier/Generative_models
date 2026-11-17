@@ -120,3 +120,42 @@
     época 1/40  MSE 9.732e-04
     época 11/40  MSE 3.578e-04
 == Partición 4: test 2840 canales reales (22 tramos); p = 8; fuentes ['real', 'gauss', 'wgan', 'ddim', 'gan', 'dcgan', 'ddpm', 'tdl', 'real_all']
+  ls 9.04 dB, avg 18.07 dB, wiener 17.53 dB, lmmse_real 21.84 dB, lmmse_gauss 21.86 dB, lmmse_wgan 21.44 dB, lmmse_ddim 21.35 dB, lmmse_gan 21.34 dB, lmmse_dcgan 20.12 dB, lmmse_ddpm 21.14 dB, lmmse_tdl 20.59 dB, lmmse_real_all 21.88 dB
+  cnn_real: 21.33 dB
+  cnn_gauss: 21.41 dB
+  cnn_wgan: 21.35 dB
+  cnn_ddim: 21.24 dB
+  cnn_gan: 21.31 dB
+  cnn_dcgan: 20.80 dB
+  cnn_ddpm: 21.38 dB
+  cnn_tdl: 20.62 dB
+  CNN con real_all (9805 canales)
+    época 1/40  MSE 8.567e-04
+    época 11/40  MSE 3.443e-04
+    época 21/40  MSE 3.307e-04
+    época 31/40  MSE 3.214e-04
+    época 40/40  MSE 3.209e-04
+    79.8 min
+  cnn_real_all: 21.47 dB
+Partición 4: cancelación media (dB) frente a canales reales de test (2840 canales × 2 ventanas; p = 8)
+  ls                  9.04  (mediana 9.03)
+  avg                18.07  (mediana 18.07)
+  wiener             17.53  (mediana 17.85)
+  lmmse_real         21.84  (mediana 22.26)
+  lmmse_gauss        21.86  (mediana 22.28)
+  lmmse_wgan         21.44  (mediana 21.79)
+  lmmse_ddim         21.35  (mediana 21.70)
+  lmmse_gan          21.34  (mediana 21.76)
+  lmmse_dcgan        20.12  (mediana 20.56)
+  lmmse_ddpm         21.14  (mediana 21.54)
+  lmmse_tdl          20.59  (mediana 20.87)
+  lmmse_real_all     21.88  (mediana 22.31)
+  cnn_real           21.33  (mediana 21.39)
+  cnn_gauss          21.41  (mediana 21.43)
+  cnn_wgan           21.35  (mediana 21.38)
+  cnn_ddim           21.24  (mediana 21.27)
+  cnn_gan            21.31  (mediana 21.35)
+  cnn_dcgan          20.80  (mediana 20.96)
+  cnn_ddpm           21.38  (mediana 21.39)
+  cnn_tdl            20.62  (mediana 20.59)
+  cnn_real_all       21.47  (mediana 21.52)
