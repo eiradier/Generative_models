@@ -106,3 +106,16 @@
   cnn_wgan: 21.35 dB
   cnn_ddim: 21.24 dB
   cnn_gan: 21.31 dB
+  cnn_dcgan: 20.80 dB
+  cnn_ddpm: 21.38 dB
+  CNN con tdl (3000 canales)
+    época 1/40  MSE 8.469e-04
+    época 11/40  MSE 4.313e-04
+    época 21/40  MSE 4.205e-04
+    época 31/40  MSE 4.163e-04
+    época 40/40  MSE 4.214e-04
+    79.2 min
+  cnn_tdl: 20.62 dB
+  CNN con real_all (9805 canales)
+    época 1/40  MSE 9.732e-04
+    época 11/40  MSE 3.578e-04
