@@ -104,3 +104,5 @@
   cnn_real: 21.33 dB
   cnn_gauss: 21.41 dB
   cnn_wgan: 21.35 dB
+  cnn_ddim: 21.24 dB
+  cnn_gan: 21.31 dB
