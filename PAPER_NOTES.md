@@ -930,6 +930,92 @@ Lectura:
 - Conclusión frente a §6.10: la significación de nulo y rizado con el test único **no se confirma** con
   validación cruzada. Las cifras del artículo deben ser las de esta sección (o de su ampliación).
 
+### 6.12 Evaluación por utilidad: estimación del loopback con CNN (`evaluation_models/sic_cnn.py`, `sic_stats.py`)
+
+Pregunta: ¿sirven los canales generados como datos de entrenamiento de un estimador de autointerferencia?
+Se reimplementa en Python la SRCNN de Bilbao et al. (IEEE TCCN 2025), caso 4 (loopback estático medido,
+canal directo con Doppler 5 Hz; DVB-T2 8 MHz, FFT 2048, GI 1/8, QPSK, ISR 10 dB, INR 30 dB, ventana de p = 8
+símbolos). En cada partición de §6.11 se entrena una CNN por fuente (3000 canales; `real_all` = todo el train
+real, ≈ 9800) y **se prueba siempre con los canales reales de test** de esa partición (2 ventanas de ruido por
+canal, el mismo ruido para todos los estimadores). Métrica: cancelación C = 10 log10(ψ/θ) (ec. 21), ψ = MSE
+de la estimación sin filtrar del símbolo central, θ = MSE de la estimación.
+
+Desviaciones respecto al artículo (detalle en el docstring de `sic_cnn.py`):
+- [Re, Im] como 2 canales de entrada en vez de concatenados en anchura.
+- Salida residual: media de los p símbolos + corrección de la CNN en la columna del símbolo central (se
+  estima el canal del símbolo central; los demás dan contexto). Partir solo del símbolo central dejaba la red
+  infraentrenada en 40 épocas (18.4 dB, frente a 18.1 dB de la media).
+- Arquitectura fija del caso 4 (Tabla VI: 17×17/46, 3×3/23, 17×17/2, ReLU), sin búsqueda bayesiana; 40 épocas
+  fijas, sin early stopping (para no usar datos reales de validación con las fuentes sintéticas).
+- No se simula la evolución temporal del loopback (canal constante en la ventana).
+
+Referencias (mismo test):
+- `ls`: símbolo central truncado al GI; `avg`: media de los p símbolos truncados.
+- `wiener`: el Wiener del artículo, una media fija de 10 subportadoras × p símbolos, sin truncar al GI. No es
+  un LMMSE: el suavizado en frecuencia sesga un canal selectivo (con 500 símbolos sin suavizado en frecuencia
+  daría 26.5 dB, con 10 subportadoras 23.6 dB).
+- `lmmse_<s>`: LMMSE con media y covarianza de taps de la fuente s; es óptimo si el canal es gaussiano y solo
+  usa estadísticos de segundo orden.
+
+Resultados (`eval_results/sodupe_180_segcv/sic_cv.txt/.csv`; por partición en `fold<k>/sic/sic_summary.txt`).
+Media sobre las 5 particiones (109 tramos, 28 398 canales de test) [IC95 del bootstrap estratificado por
+tramos, 10 000 réplicas]; Δ emparejada frente a la CNN entrenada con el gaussiano:
+
+| Estimador | p0 | p1 | p2 | p3 | p4 | CV (dB) [IC95] | Δ vs cnn_gauss [IC95] | Particiones > gauss |
+|---|---|---|---|---|---|---|---|---|
+| cnn_real_all | 21.40 | 21.43 | 21.49 | 21.43 | 21.47 | 21.44 [21.38, 21.52] | +0.15 [+0.13, +0.17] | 5/5 |
+| cnn_wgan | 21.34 | 21.30 | 21.39 | 21.41 | 21.35 | 21.36 [21.29, 21.43] | +0.06 [+0.04, +0.09] | 4/5 |
+| cnn_real | 21.33 | 21.38 | 21.35 | 21.37 | 21.33 | 21.35 [21.28, 21.43] | +0.06 [+0.04, +0.08] | 3/5 |
+| cnn_ddpm | 21.31 | 21.26 | 21.39 | 21.41 | 21.38 | 21.35 [21.29, 21.42] | +0.05 [+0.04, +0.07] | 4/5 |
+| cnn_dcgan | 21.35 | 21.41 | 21.52 | 21.56 | 20.80 | 21.33 [21.25, 21.41] | +0.03 [−0.00, +0.07] | 4/5 |
+| cnn_gauss | 21.22 | 21.15 | 21.39 | 21.31 | 21.41 | 21.29 [21.24, 21.36] | — | — |
+| cnn_ddim | 21.29 | 21.25 | 21.28 | 21.36 | 21.24 | 21.28 [21.23, 21.35] | −0.01 [−0.02, −0.00] | 3/5 |
+| cnn_gan | 21.05 | 21.31 | 21.33 | 21.30 | 21.31 | 21.26 [21.19, 21.33] | −0.04 [−0.06, −0.02] | 1/5 |
+| cnn_tdl | 20.76 | 20.58 | 20.61 | 20.80 | 20.62 | 20.67 [20.58, 20.77] | −0.62 [−0.72, −0.52] | 0/5 |
+| lmmse_gauss | 21.30 | 21.38 | 21.61 | 21.35 | 21.86 | 21.50 [21.33, 21.68] | +0.21 [+0.07, +0.34] | 5/5 |
+| lmmse_real_all | 21.29 | 21.38 | 21.60 | 21.36 | 21.88 | 21.50 [21.33, 21.69] | +0.21 [+0.07, +0.35] | 5/5 |
+| lmmse_real | 21.21 | 21.32 | 21.55 | 21.29 | 21.84 | 21.44 [21.26, 21.63] | +0.15 [+0.01, +0.29] | 3/5 |
+| lmmse_wgan | 21.23 | 21.34 | 21.47 | 21.43 | 21.44 | 21.38 [21.25, 21.53] | +0.09 [−0.01, +0.19] | 5/5 |
+| lmmse_ddim | 21.18 | 21.13 | 21.17 | 21.22 | 21.35 | 21.21 [21.12, 21.32] | −0.08 | 0/5 |
+| lmmse_ddpm | 20.61 | 20.51 | 21.06 | 20.80 | 21.14 | 20.82 [20.70, 20.96] | −0.47 | 0/5 |
+| lmmse_gan | 19.83 | 20.67 | 21.24 | 20.94 | 21.34 | 20.80 [20.64, 20.97] | −0.49 | 0/5 |
+| lmmse_dcgan | 20.38 | 20.47 | 21.31 | 20.92 | 20.12 | 20.64 [20.48, 20.81] | −0.65 | 0/5 |
+| lmmse_tdl | 20.59 | 20.42 | 20.53 | 20.68 | 20.59 | 20.56 [20.44, 20.69] | −0.73 | 0/5 |
+| avg | 18.07 | 18.07 | 18.07 | 18.07 | 18.07 | 18.07 | −3.22 | 0/5 |
+| wiener (artículo) | 17.58 | 17.38 | 17.51 | 17.57 | 17.53 | 17.51 [17.41, 17.62] | −3.78 | 0/5 |
+| ls | 9.04 | 9.05 | 9.03 | 9.04 | 9.04 | 9.04 | −12.26 | 0/5 |
+
+Frente a la CNN entrenada con canales reales (3000): WGAN +0.01 [−0.02, +0.03] y DDPM −0.00 [−0.02, +0.02],
+equivalentes; DCGAN −0.02 [−0.06, +0.01]; gauss −0.06, DDIM −0.07, GAN −0.09, TDL −0.68 (significativas);
+real_all +0.09 [+0.08, +0.11].
+
+Lectura:
+- **Todos los estimadores aprendidos o estadísticos mejoran ≈ 3.8 dB al Wiener del artículo** con la misma
+  ventana de 8 símbolos (≈ 17.5 → 21.3–21.5 dB).
+- **WGAN y DDPM sustituyen a los datos reales**: la CNN entrenada con ellos rinde igual que con 3000 canales
+  reales, y ambas superan con significación a la entrenada con el gaussiano (+0.05–0.06 dB). Las diferencias
+  son pequeñas (≈ 0.1 dB) frente al margen sobre el Wiener del artículo.
+- **TDL-Rice es claramente insuficiente** (−0.6 dB en CNN y −0.7 dB en LMMSE, en las 5 particiones): un modelo
+  estándar de la literatura no sirve como sustituto de los datos medidos.
+- **GAN y DCGAN son inestables**: DCGAN es la mejor fuente en las particiones 2 y 3 pero se hunde en la 4
+  (20.80 dB), la misma partición en la que §6.11 detecta un posible colapso (su LMMSE también es el peor, 20.12
+  dB). GAN falla en la partición 0 (LMMSE 19.83 dB). Con una semilla por partición no se distingue partición
+  de entrenamiento.
+- **El LMMSE de covarianza completa supera a todas las CNN** (lmmse_gauss 21.50 frente a cnn_real_all 21.44 y
+  cnn_real 21.35 dB; la diferencia frente a cnn_real, +0.15 [+0.02, +0.28], es significativa; frente a cnn_real_all, +0.06
+  [−0.07, +0.18], no). Con su campo
+  receptivo local (≈ 35 taps), la CNN no aprovecha más que la estructura de segundo orden, que el LMMSE usa de
+  forma óptima. Por eso el LMMSE ordena las fuentes casi solo por su covarianza (gauss = real_all, el
+  gaussiano reproduce la de train por construcción), y la CNN da una utilidad algo más sensible a la
+  estructura no gaussiana. Una CNN de campo receptivo global queda como trabajo futuro.
+- **Más datos reales ayudan**: real_all (≈ 9800) supera a real (3000) en las 5 particiones (+0.09 dB). La
+  ventaja de los modelos generativos sería, por tanto, poder generar más datos de lo que cuestan las medidas;
+  no se ha probado entrenar con más de 3000 canales generados.
+
+Limitaciones: una sola semilla de entrenamiento de la CNN y del generador por partición (el bootstrap solo
+cubre el test); el canal loopback es estático dentro de la ventana; la escala de diferencias (≈ 0.1 dB) es
+del orden de la variabilidad entre particiones.
+
 ## 7. Figuras (PDF y PNG) en `eval_results/sodupe_180_split_g200/`
 
 | Figura | Contenido |
@@ -1033,6 +1119,8 @@ python evaluation_models/make_segment_folds.py              # 5 particiones por 
 # por partición k: train.py --model <m> --config checkpoints/sodupe_180_segcv/fold<k>/<gans|dm>_config.json,
 # generate_from_config.py y evaluation.py --config eval_results/sodupe_180_segcv/fold<k>/evaluation_config.json --reuse-generated
 python evaluation_models/cv_stats.py --cache <carpeta>      # media sobre particiones + bootstrap por tramos
+python evaluation_models/sic_cnn.py --fold <k> --epochs 40   # utilidad: CNN de estimación del loopback (por partición)
+python evaluation_models/sic_stats.py                       # utilidad: media sobre particiones + bootstrap por tramos
 python evaluation_models/model_costs.py               # lee training_log.json de paths.save_dir
 python evaluation_models/sweep_sampling.py --steps 25 50 100 250 500 1000 --eta 0 0.5 1   # muestreo DDIM
 ```
